@@ -364,7 +364,10 @@ class PersonalShopperAgent(Agent):
         if top_products:
             try:
                 product_ids = [product['id'] for product, _ in top_products]
-                await self.display_products_grid(context, product_ids, f"Search Results: {', '.join(keywords)}")
+                # Fire and forget - don't wait for display to complete
+                asyncio.create_task(
+                    self.display_products_grid(context, product_ids, f"Search Results: {', '.join(keywords)}")
+                )
             except Exception as e:
                 logger.error(f"Failed to auto-display search results: {e}")
         
@@ -433,13 +436,23 @@ class PersonalShopperAgent(Agent):
         logger.info(f"Sending product grid payload: {json_payload}")
         
         try:
-            await room.local_participant.perform_rpc(
-                destination_identity=participant.identity,
-                method="client.productgrid",
-                payload=json_payload,
-                response_timeout=10.0  # Increased timeout to 10 seconds
+            # Create task and handle it properly
+            rpc_task = asyncio.create_task(
+                room.local_participant.perform_rpc(
+                    destination_identity=participant.identity,
+                    method="client.productgrid",
+                    payload=json_payload,
+                    response_timeout=5.0  # Reduced timeout to 5 seconds
+                )
             )
+            
+            # Wait for completion but handle timeout gracefully
+            await asyncio.wait_for(rpc_task, timeout=6.0)
             return f"Displaying {len(products_to_display)} products in '{grid_title}' grid view!"
+            
+        except asyncio.TimeoutError:
+            logger.warning(f"RPC timeout displaying product grid: {grid_title}")
+            return f"Found {len(products_to_display)} products for '{grid_title}' (visual display temporarily unavailable)"
         except Exception as e:
             logger.error(f"Failed to display product grid: {e}")
             return f"Found {len(products_to_display)} products for '{grid_title}' (visual display temporarily unavailable)"
@@ -479,7 +492,10 @@ class PersonalShopperAgent(Agent):
         if top_products:
             try:
                 product_ids = [product['id'] for product in top_products]
-                await self.display_products_grid(context, product_ids, f"🔥 Top {len(top_products)} Discounts")
+                # Fire and forget - don't wait for display to complete
+                asyncio.create_task(
+                    self.display_products_grid(context, product_ids, f"🔥 Top {len(top_products)} Discounts")
+                )
             except Exception as e:
                 logger.error(f"Failed to auto-display discount products: {e}")
         
@@ -520,7 +536,10 @@ class PersonalShopperAgent(Agent):
         if top_products:
             try:
                 product_ids = [product['id'] for product in top_products]
-                await self.display_products_grid(context, product_ids, f"{category.title()} Products")
+                # Fire and forget - don't wait for display to complete
+                asyncio.create_task(
+                    self.display_products_grid(context, product_ids, f"{category.title()} Products")
+                )
             except Exception as e:
                 logger.error(f"Failed to auto-display category products: {e}")
         
@@ -561,7 +580,10 @@ class PersonalShopperAgent(Agent):
         if top_products:
             try:
                 product_ids = [product['id'] for product in top_products]
-                await self.display_products_grid(context, product_ids, f"Products ${min_price:.2f} - ${max_price:.2f}")
+                # Fire and forget - don't wait for display to complete
+                asyncio.create_task(
+                    self.display_products_grid(context, product_ids, f"Products ${min_price:.2f} - ${max_price:.2f}")
+                )
             except Exception as e:
                 logger.error(f"Failed to auto-display price range products: {e}")
         
@@ -626,11 +648,27 @@ class PersonalShopperAgent(Agent):
         
         json_payload = json.dumps(payload)
         logger.info(f"Sending product card payload: {json_payload}")
-        await room.local_participant.perform_rpc(
-            destination_identity=participant.identity,
-            method="client.productcard",
-            payload=json_payload
-        )
+        
+        try:
+            # Create task and handle it properly
+            rpc_task = asyncio.create_task(
+                room.local_participant.perform_rpc(
+                    destination_identity=participant.identity,
+                    method="client.productcard",
+                    payload=json_payload,
+                    response_timeout=5.0  # Reduced timeout
+                )
+            )
+            
+            # Wait for completion but handle timeout gracefully
+            await asyncio.wait_for(rpc_task, timeout=6.0)
+            
+        except asyncio.TimeoutError:
+            logger.warning(f"RPC timeout creating product card for {product['title']}")
+            # Continue with success message even if RPC failed
+        except Exception as e:
+            logger.error(f"Failed to send product card RPC: {e}")
+            # Continue with success message even if RPC failed
         
         discount_text = f" with {product['discountPercentage']:.1f}% off" if product['discountPercentage'] > 0 else ""
         return f"I've created a product card for {product['title']} at ${product['price']:.2f}{discount_text}!"
@@ -693,7 +731,7 @@ class PersonalShopperAgent(Agent):
                     "rating": product['rating'],
                     "discount_percentage": product['discountPercentage'],
                     "brand": product.get('brand', '')
-            })
+                })
         
         payload = {
             "action": "show",
@@ -705,11 +743,27 @@ class PersonalShopperAgent(Agent):
         
         json_payload = json.dumps(payload)
         logger.info(f"Sending product quiz payload: {json_payload}")
-        await room.local_participant.perform_rpc(
-            destination_identity=participant.identity,
-            method="client.productquiz",
-            payload=json_payload
-        )
+        
+        try:
+            # Create task and handle it properly
+            rpc_task = asyncio.create_task(
+                room.local_participant.perform_rpc(
+                    destination_identity=participant.identity,
+                    method="client.productquiz",
+                    payload=json_payload,
+                    response_timeout=5.0  # Reduced timeout
+                )
+            )
+            
+            # Wait for completion but handle timeout gracefully
+            await asyncio.wait_for(rpc_task, timeout=6.0)
+            
+        except asyncio.TimeoutError:
+            logger.warning(f"RPC timeout creating product quiz")
+            # Continue with success message even if RPC failed
+        except Exception as e:
+            logger.error(f"Failed to send product quiz RPC: {e}")
+            # Continue with success message even if RPC failed
         
         category_text = f" from {category}" if category else ""
         return f"I've created a fun product selection quiz with {count} products{category_text}! Swipe through them and like the ones you're interested in. If you like at least 3, you'll get a 5% discount!"
