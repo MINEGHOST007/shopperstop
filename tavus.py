@@ -1,6 +1,8 @@
 import logging
 import json
 import uuid
+import difflib
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, List, Dict, Any, TypedDict
@@ -9,7 +11,7 @@ from livekit.agents import JobContext, WorkerOptions, cli, WorkerPermissions, Ro
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import Agent, AgentSession, RunContext
 from livekit.plugins.turn_detector.english import EnglishModel
-from livekit.plugins import openai, silero, deepgram, tavus, elevenlabs, rime, turn_detector
+from livekit.plugins import openai, silero, deepgram, tavus, elevenlabs, rime, turn_detector, google
 import asyncio
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / '.env')
@@ -17,394 +19,494 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / '.env')
 logger = logging.getLogger("avatar")
 logger.setLevel(logging.INFO)
 
-class QuizAnswerDict(TypedDict):
-    text: str
-    is_correct: bool
+# Load products from JSON
+def load_products():
+    """Load products from products.json file."""
+    try:
+        with open('products.json', 'r') as f:
+            data = json.load(f)
+            return data.get('products', [])
+    except Exception as e:
+        logger.error(f"Error loading products: {e}")
+        return []
 
-class QuizQuestionDict(TypedDict):
-    text: str
-    answers: List[QuizAnswerDict]
+# Global products list
+PRODUCTS = load_products()
+
+class ProductRecommendationDict(TypedDict):
+    product_id: int
+    title: str
+    description: str
+    price: float
+    discount_percentage: float
+    category: str
+    rating: float
+
+class ProductSelectionDict(TypedDict):
+    product_id: int
+    title: str
+    price: float
+    image: str
+    liked: bool
 
 @dataclass
-class FlashCard:
-    """Class to represent a flash card."""
+class ProductCard:
+    """Class to represent a product card for display."""
     id: str
-    question: str
-    answer: str
-    is_flipped: bool = False
+    product_id: int
+    title: str 
+    price: float
+    image: str
+    description: str
+    category: str
+    rating: float
+    discount_percentage: float
 
 @dataclass
-class QuizAnswer:
-    """Class to represent a quiz answer option."""
+class ProductQuiz:
+    """Class to represent a product selection quiz (like Tinder for products)."""
     id: str
-    text: str
-    is_correct: bool
-
-@dataclass
-class QuizQuestion:
-    """Class to represent a quiz question."""
-    id: str
-    text: str
-    answers: List[QuizAnswer]
-
-@dataclass
-class Quiz:
-    """Class to represent a quiz."""
-    id: str
-    questions: List[QuizQuestion]
+    products: List[ProductCard]
+    discount_percentage: float = 5.0
 
 @dataclass
 class UserData:
     """Class to store user data during a session."""
     ctx: Optional[JobContext] = None
-    flash_cards: List[FlashCard] = field(default_factory=list)
-    quizzes: List[Quiz] = field(default_factory=list)
+    product_cards: List[ProductCard] = field(default_factory=list)
+    product_quizzes: List[ProductQuiz] = field(default_factory=list)
+    user_preferences: Dict[str, List[str]] = field(default_factory=dict)
 
     def reset(self) -> None:
         """Reset session data."""
-        # Keep flash cards and quizzes intact
+        # Keep product cards and preferences
 
-    def add_flash_card(self, question: str, answer: str) -> FlashCard:
-        """Add a new flash card to the collection."""
-        card = FlashCard(
+    def add_product_card(self, product: dict) -> ProductCard:
+        """Add a new product card to the collection."""
+        card = ProductCard(
             id=str(uuid.uuid4()),
-            question=question,
-            answer=answer
+            product_id=product['id'],
+            title=product['title'],
+            price=product['price'],
+            image=product.get('thumbnail', ''),
+            description=product['description'],
+            category=product['category'],
+            rating=product['rating'],
+            discount_percentage=product['discountPercentage']
         )
-        self.flash_cards.append(card)
+        self.product_cards.append(card)
         return card
     
-    def get_flash_card(self, card_id: str) -> Optional[FlashCard]:
-        """Get a flash card by ID."""
-        for card in self.flash_cards:
+    def get_product_card(self, card_id: str) -> Optional[ProductCard]:
+        """Get a product card by ID."""
+        for card in self.product_cards:
             if card.id == card_id:
                 return card
         return None
     
-    def flip_flash_card(self, card_id: str) -> Optional[FlashCard]:
-        """Flip a flash card by ID."""
-        card = self.get_flash_card(card_id)
-        if card:
-            card.is_flipped = not card.is_flipped
-            return card
-        return None
-        
-    def add_quiz(self, questions: List[QuizQuestionDict]) -> Quiz:
-        """Add a new quiz to the collection."""
-        quiz_questions = []
-        for q in questions:
-            answers = []
-            for a in q["answers"]:
-                answers.append(QuizAnswer(
-                    id=str(uuid.uuid4()),
-                    text=a["text"],
-                    is_correct=a["is_correct"]
-                ))
-            quiz_questions.append(QuizQuestion(
+    def add_product_quiz(self, products: List[dict]) -> ProductQuiz:
+        """Add a new product selection quiz."""
+        quiz_products = []
+        for product in products:
+            card = ProductCard(
                 id=str(uuid.uuid4()),
-                text=q["text"],
-                answers=answers
-            ))
+                product_id=product['id'],
+                title=product['title'],
+                price=product['price'],
+                image=product.get('thumbnail', ''),
+                description=product['description'],
+                category=product['category'],
+                rating=product['rating'],
+                discount_percentage=product['discountPercentage']
+            )
+            quiz_products.append(card)
         
-        quiz = Quiz(
+        quiz = ProductQuiz(
             id=str(uuid.uuid4()),
-            questions=quiz_questions
+            products=quiz_products
         )
-        self.quizzes.append(quiz)
+        self.product_quizzes.append(quiz)
         return quiz
     
-    def get_quiz(self, quiz_id: str) -> Optional[Quiz]:
-        """Get a quiz by ID."""
-        for quiz in self.quizzes:
+    def get_product_quiz(self, quiz_id: str) -> Optional[ProductQuiz]:
+        """Get a product quiz by ID."""
+        for quiz in self.product_quizzes:
             if quiz.id == quiz_id:
                 return quiz
         return None
     
-    def check_quiz_answers(self, quiz_id: str, user_answers: dict) -> List[tuple]:
-        """Check user's quiz answers and return results."""
-        quiz = self.get_quiz(quiz_id)
+    def process_product_selections(self, quiz_id: str, selections: dict) -> List[dict]:
+        """Process product selections from quiz."""
+        quiz = self.get_product_quiz(quiz_id)
         if not quiz:
             return []
         
-        results = []
-        for question in quiz.questions:
-            user_answer_id = user_answers.get(question.id)
-            
-            # Find the selected answer and the correct answer
-            selected_answer = None
-            correct_answer = None
-            
-            for answer in question.answers:
-                if answer.id == user_answer_id:
-                    selected_answer = answer
-                if answer.is_correct:
-                    correct_answer = answer
-            
-            is_correct = selected_answer and selected_answer.is_correct
-            results.append((question, selected_answer, correct_answer, is_correct))
+        liked_products = []
+        for product in quiz.products:
+            selection = selections.get(product.id)
+            if selection and selection.get('liked', False):
+                liked_products.append({
+                    'product_id': product.product_id,
+                    'title': product.title,
+                    'category': product.category,
+                    'price': product.price
+                })
+                
+                # Update user preferences based on liked products
+                category = product.category
+                if category not in self.user_preferences:
+                    self.user_preferences[category] = []
+                if product.title not in self.user_preferences[category]:
+                    self.user_preferences[category].append(product.title)
         
-        return results
+        return liked_products
 
-class AvatarAgent(Agent):
+class PersonalShopperAgent(Agent):
     def __init__(self) -> None:
+        # Create a comprehensive products summary for the system instructions
+        categories = set(p['category'] for p in PRODUCTS)
+        brands = set(p.get('brand', 'Unknown') for p in PRODUCTS if p.get('brand'))
+        price_range = f"${min(p['price'] for p in PRODUCTS):.2f} - ${max(p['price'] for p in PRODUCTS):.2f}" if PRODUCTS else "$0 - $0"
+        
+        products_summary = f"""
+        AVAILABLE PRODUCTS DATABASE:
+        Total Products: {len(PRODUCTS)}
+        Categories: {', '.join(sorted(categories))}
+        Top Brands: {', '.join(sorted(list(brands))[:20])}
+        Price Range: {price_range}
+        
+        Key product information includes: title, description, category, price, discount percentage, rating, stock, brand, tags, reviews, and images.
+        """
+        
         super().__init__(
-            instructions="""
-                You are also a helpful, patient, and curious study partner for a student learning about the Fall of the Roman Empire.
-                Your primary goal is to foster deep understanding through guided discovery, dialogue, and repetition.
+            instructions=f"""
+                You are Sarah, a highly knowledgeable and enthusiastic personal shopping assistant with access to an extensive product database.
+                Your primary goal is to help customers find the perfect products based on their needs, preferences, and budget.
+
+                {products_summary}
 
                 Your responsibilities include:
-                    •	Explaining core topics related to the Fall of the Roman Empire, including:
-                    •	Economic factors (currency devaluation, overtaxation, wealth inequality)
-                    •	Military decline (barbarian invasions, loss of discipline, mercenary reliance)
-                    •	Political instability (succession crises, civil wars, corruption)
-                    •	Administrative challenges (East-West division, bureaucratic bloat)
-                    •	Social and cultural changes (spread of Christianity, shifting values)
-                    •	External pressures (Germanic tribes, Huns, Sassanid Persians)
-                    •	Environmental factors (climate change, plagues, agricultural decline)
-                    •	Using Socratic questioning to help the student reach answers themselves.
-                    •	Providing clear explanations only when necessary, then quizzing the student on similar historical questions.
-                    •	Alternating between roles: sometimes you ask questions, other times you answer.
-                    •	Prioritizing reinforcement through follow-up questions that vary in difficulty and context.
-                    •	Maintaining a friendly, encouraging tone that supports confidence and curiosity.
+                • Understanding customer needs through thoughtful questions about their preferences, budget, style, and requirements
+                • Using your product search tools to find relevant items that match their criteria
+                • Providing detailed product recommendations with pricing, features, and benefits
+                • Highlighting special discounts and deals available
+                • Creating product selection quizzes (like Tinder for products) where customers can swipe through products - if they like enough products, they get a 5% discount!
+                • Offering alternatives and comparisons between similar products
+                • Explaining product features, benefits, and why they're good matches
+                • Being enthusiastic about great deals and helping customers save money
 
-                Do not rush to give the answer. Instead, support reasoning, analytical thinking, and the development of historical understanding.
+                TOOLS AT YOUR DISPOSAL:
+                • search_products: Find products based on keywords, categories, or descriptions
+                • get_top_discounts: Show products with the highest discount percentages
+                • get_products_by_category: Browse products in specific categories
+                • get_products_in_price_range: Find products within a specific budget
+                • create_product_selection_quiz: Create a fun product selection experience with discount rewards
+                • create_product_card: Show individual product recommendations
 
-                It's very important that you remember you are having this talk via voice. You should use clear language and be specific about dates, names, and events related to the Fall of Rome (roughly 376-476 CE, though the Eastern Roman Empire continued until 1453 CE).
+                PRODUCT SELECTION QUIZ FEATURE:
+                You can create engaging product selection quizzes where customers swipe through products like Tinder.
+                If they like at least 3 products, they unlock a 5% discount on their next purchase!
+                This is a fun way to understand their preferences while offering value.
 
-                Always start answering a question by first asking questions, try to use the socratic method until it seems like you're both stuck.
+                CONVERSATION STYLE:
+                • Be conversational, friendly, and excited about helping customers find great products
+                • Ask follow-up questions to better understand their needs
+                • Share interesting details about products (reviews, unique features, great deals)
+                • Keep responses concise but informative - this is a voice conversation
+                • Celebrate great deals and matches with enthusiasm
+                • Always mention prices and any available discounts
 
-                FLASH CARDS FEATURE:4
-                You can create flash cards to help the user learn and remember important concepts. Use the create_flash_card function
-                to create a new flash card with a question and answer. The flash card will appear beside you in the UI.
-                
-                Be proactive in creating flash cards for important concepts, especially when:
-                - Teaching new vocabulary or terminology
-                - Explaining complex principles that are worth remembering
-                - Summarizing key points from a discussion
-                
-                For example, when explaining the causes of the Fall of Rome, you might create a flash card with:
-                Question: "What year marks the traditional end of the Western Roman Empire?"
-                Answer: "476 CE, when the last Roman Emperor Romulus Augustulus was deposed by Odoacer, the Germanic king."
-
-                Do not tell the user the answer before they look at it!
-                
-                You can also flip flash cards to show the answer using the flip_flash_card function.
-                
-                QUIZ FEATURE:
-                You can create multiple-choice quizzes to test the user's knowledge. Use the create_quiz function
-                to create a new quiz with questions and multiple-choice answers. The quiz will appear on the left side of the UI.
-                
-                For each question, you should provide:
-                - A clear question text
-                - 3-5 answer options (one must be marked as correct)
-                
-                Quizzes are great for:
-                - Testing comprehension after explaining a concept
-                - Reviewing previously covered material
-                - Preparing the user for a test or exam
-                - Breaking up longer learning sessions with interactive elements
-                
-                When the user submits their answers, you'll automatically provide verbal feedback on their performance.
-                Don't just read back the questions and answers, give some color commentary that makes it interesting. Use names, 
-                dates, or other interesting facts about the question to root it in memory.
-                For any incorrectly answered questions, flash cards will be created to help them study the correct answers.
-                
-                Example format for creating a quiz:
-                ```python
-                await self.create_quiz([
-                    {
-                        "text": "What year marks the traditional end of the Western Roman Empire?",
-                        "answers": [
-                            {"text": "410 CE", "is_correct": False},
-                            {"text": "476 CE", "is_correct": True},
-                            {"text": "527 CE", "is_correct": False},
-                            {"text": "1453 CE", "is_correct": False}
-                        ]
-                    },
-                    {
-                        "text": "Who was the last Western Roman Emperor?",
-                        "answers": [
-                            {"text": "Constantine", "is_correct": False},
-                            {"text": "Theodosius", "is_correct": False},
-                            {"text": "Romulus Augustulus", "is_correct": True},
-                            {"text": "Justinian", "is_correct": False}
-                        ]
-                    }
-                ])
-                ```
-                
-                Start the interaction with a short introduction, and let the student
-                guide their own learning journey!
-
-                Keep your speaking turns short, only one or two sentences. We want the
-                student to do most of the speaking.
+                Start the conversation by introducing yourself and asking what they're shopping for today!
+                Keep your speaking turns short, only one or two sentences. We want the customer to engage actively.
             """,
             stt=deepgram.STT(),
-            llm=openai.LLM(model="gpt-4o"),
+            llm=google.LLM(model="gemini-1.5-flash"),
             tts=elevenlabs.TTS(
-                # voice_id="cjVigY5qzO86Huf0OWal"
                 voice_id="21m00Tcm4TlvDq8ikWAM"
             ),
             vad=silero.VAD.load(),
         )
 
     @function_tool
-    async def create_flash_card(self, context: RunContext[UserData], question: str, answer: str):
-        """Create a new flash card and display it to the user.
+    async def search_products(self, context: RunContext[UserData], query: str, limit: int = 5) -> str:
+        """Search for products using fuzzy matching on titles, descriptions, and tags.
 
         Args:
-            question: The question or front side of the flash card
-            answer: The answer or back side of the flash card
+            query: Search query (keywords, product name, or description)
+            limit: Maximum number of products to return (default 5)
+        """
+        if not PRODUCTS:
+            return "No products available in the database."
+        
+        # Create searchable strings for each product
+        searchable_products = []
+        for product in PRODUCTS:
+            searchable_text = f"{product['title']} {product['description']} {' '.join(product.get('tags', []))} {product['category']} {product.get('brand', '')}".lower()
+            searchable_products.append((searchable_text, product))
+        
+        query_lower = query.lower()
+        
+        # Use difflib to find closest matches
+        matches = []
+        for searchable_text, product in searchable_products:
+            if query_lower in searchable_text:
+                # Calculate similarity score
+                similarity = difflib.SequenceMatcher(None, query_lower, searchable_text).ratio()
+                matches.append((similarity, product))
+        
+        # Sort by similarity and get top matches
+        matches.sort(key=lambda x: x[0], reverse=True)
+        top_products = [product for _, product in matches[:limit]]
+        
+        if not top_products:
+            return f"No products found matching '{query}'. Try different keywords."
+        
+        result = f"Found {len(top_products)} products matching '{query}':\n\n"
+        for i, product in enumerate(top_products, 1):
+            discount_text = f" ({product['discountPercentage']:.1f}% off!)" if product['discountPercentage'] > 0 else ""
+            result += f"{i}. {product['title']} - ${product['price']:.2f}{discount_text}\n"
+            result += f"   Category: {product['category']} | Rating: {product['rating']:.1f}/5 | Stock: {product['stock']}\n"
+            result += f"   {product['description'][:100]}...\n\n"
+        
+        return result
+
+    @function_tool
+    async def get_top_discounts(self, context: RunContext[UserData], limit: int = 10) -> str:
+        """Get products with the highest discount percentages.
+
+        Args:
+            limit: Maximum number of products to return (default 10)
+        """
+        if not PRODUCTS:
+            return "No products available in the database."
+        
+        # Sort products by discount percentage
+        discounted_products = [p for p in PRODUCTS if p['discountPercentage'] > 0]
+        discounted_products.sort(key=lambda x: x['discountPercentage'], reverse=True)
+        
+        top_products = discounted_products[:limit]
+        
+        if not top_products:
+            return "No discounted products available at the moment."
+        
+        result = f"🔥 TOP {len(top_products)} DISCOUNTS:\n\n"
+        for i, product in enumerate(top_products, 1):
+            original_price = product['price'] / (1 - product['discountPercentage'] / 100)
+            savings = original_price - product['price']
+            result += f"{i}. {product['title']}\n"
+            result += f"   💰 ${product['price']:.2f} (was ${original_price:.2f}) - SAVE ${savings:.2f}!\n"
+            result += f"   🔥 {product['discountPercentage']:.1f}% OFF | {product['category']} | Rating: {product['rating']:.1f}/5\n"
+            result += f"   📦 Stock: {product['stock']}\n\n"
+        
+        return result
+
+    @function_tool
+    async def get_products_by_category(self, context: RunContext[UserData], category: str, limit: int = 8) -> str:
+        """Get products from a specific category.
+
+        Args:
+            category: Product category (e.g., 'beauty', 'electronics', 'clothing')
+            limit: Maximum number of products to return (default 8)
+        """
+        if not PRODUCTS:
+            return "No products available in the database."
+        
+        category_products = [p for p in PRODUCTS if p['category'].lower() == category.lower()]
+        
+        if not category_products:
+            available_categories = sorted(set(p['category'] for p in PRODUCTS))
+            return f"No products found in '{category}' category. Available categories: {', '.join(available_categories)}"
+        
+        # Sort by rating and discount
+        category_products.sort(key=lambda x: (x['rating'], x['discountPercentage']), reverse=True)
+        top_products = category_products[:limit]
+        
+        result = f"Top {len(top_products)} products in {category.title()}:\n\n"
+        for i, product in enumerate(top_products, 1):
+            discount_text = f" ({product['discountPercentage']:.1f}% off!)" if product['discountPercentage'] > 0 else ""
+            result += f"{i}. {product['title']} - ${product['price']:.2f}{discount_text}\n"
+            result += f"   Brand: {product.get('brand', 'N/A')} | Rating: {product['rating']:.1f}/5 | Stock: {product['stock']}\n"
+            result += f"   {product['description'][:80]}...\n\n"
+        
+        return result
+
+    @function_tool
+    async def get_products_in_price_range(self, context: RunContext[UserData], min_price: float, max_price: float, limit: int = 8) -> str:
+        """Get products within a specific price range.
+
+        Args:
+            min_price: Minimum price
+            max_price: Maximum price
+            limit: Maximum number of products to return (default 8)
+        """
+        if not PRODUCTS:
+            return "No products available in the database."
+        
+        filtered_products = [p for p in PRODUCTS if min_price <= p['price'] <= max_price]
+        
+        if not filtered_products:
+            return f"No products found in the ${min_price:.2f} - ${max_price:.2f} price range."
+        
+        # Sort by rating and discount
+        filtered_products.sort(key=lambda x: (x['rating'], x['discountPercentage']), reverse=True)
+        top_products = filtered_products[:limit]
+        
+        result = f"Top {len(top_products)} products in ${min_price:.2f} - ${max_price:.2f} range:\n\n"
+        for i, product in enumerate(top_products, 1):
+            discount_text = f" ({product['discountPercentage']:.1f}% off!)" if product['discountPercentage'] > 0 else ""
+            result += f"{i}. {product['title']} - ${product['price']:.2f}{discount_text}\n"
+            result += f"   Category: {product['category']} | Rating: {product['rating']:.1f}/5\n"
+            result += f"   {product['description'][:80]}...\n\n"
+        
+        return result
+
+    @function_tool
+    async def create_product_card(self, context: RunContext[UserData], product_id: int):
+        """Create and display a product card for a specific product.
+
+        Args:
+            product_id: The ID of the product to display
         """
         userdata = context.userdata
-        card = userdata.add_flash_card(question, answer)
+        
+        # Find the product
+        product = next((p for p in PRODUCTS if p['id'] == product_id), None)
+        if not product:
+            return f"Product with ID {product_id} not found."
+        
+        card = userdata.add_product_card(product)
         
         # Get the room from the userdata
         if not userdata.ctx or not userdata.ctx.room:
-            return f"Created a flash card, but couldn't access the room to send it."
+            return f"Created a product card, but couldn't access the room to send it."
         
         room = userdata.ctx.room
         
         # Get the first participant in the room (should be the client)
         participants = room.remote_participants
         if not participants:
-            return f"Created a flash card, but no participants found to send it to."
+            return f"Created a product card, but no participants found to send it to."
         
-        # Get the first participant from the dictionary of remote participants
         participant = next(iter(participants.values()), None)
         if not participant:
-            return f"Created a flash card, but couldn't get the first participant."
+            return f"Created a product card, but couldn't get the first participant."
+        
+        # Calculate discounted price if applicable
+        discounted_price = product['price']
+        original_price = None
+        if product['discountPercentage'] > 0:
+            original_price = product['price'] / (1 - product['discountPercentage'] / 100)
+        
         payload = {
             "action": "show",
             "id": card.id,
-            "question": card.question,
-            "answer": card.answer,
-            "index": len(userdata.flash_cards) - 1
+            "product_id": product['id'],
+            "title": product['title'],
+            "description": product['description'],
+            "price": discounted_price,
+            "original_price": original_price,
+            "discount_percentage": product['discountPercentage'],
+            "category": product['category'],
+            "rating": product['rating'],
+            "stock": product['stock'],
+            "brand": product.get('brand', ''),
+            "image": product.get('thumbnail', ''),
+            "tags": product.get('tags', [])
         }
         
-        # Make sure payload is properly serialized
         json_payload = json.dumps(payload)
-        logger.info(f"Sending flash card payload: {json_payload}")
+        logger.info(f"Sending product card payload: {json_payload}")
         await room.local_participant.perform_rpc(
             destination_identity=participant.identity,
-            method="client.flashcard",
+            method="client.productcard",
             payload=json_payload
         )
         
-        return f"I've created a flash card with the question: '{question}'"
-
-    @function_tool
-    async def flip_flash_card(self, context: RunContext[UserData], card_id: str):
-        """Flip a flash card to show the answer or question.
-
-        Args:
-            card_id: The ID of the flash card to flip
-        """
-        userdata = context.userdata
-        card = userdata.flip_flash_card(card_id)
-        
-        if not card:
-            return f"Flash card with ID {card_id} not found."
-        
-        # Get the room from the userdata
-        if not userdata.ctx or not userdata.ctx.room:
-            return f"Flipped the flash card, but couldn't access the room to send it."
-        
-        room = userdata.ctx.room
-        
-        # Get the first participant in the room (should be the client)
-        participants = room.remote_participants
-        if not participants:
-            return f"Flipped the flash card, but no participants found to send it to."
-        
-        # Get the first participant from the dictionary of remote participants
-        participant = next(iter(participants.values()), None)
-        if not participant:
-            return f"Flipped the flash card, but couldn't get the first participant."
-        payload = {
-            "action": "flip",
-            "id": card.id
-        }
-        
-        # Make sure payload is properly serialized
-        json_payload = json.dumps(payload)
-        logger.info(f"Sending flip card payload: {json_payload}")
-        await room.local_participant.perform_rpc(
-            destination_identity=participant.identity,
-            method="client.flashcard",
-            payload=json_payload
-        )
-        
-        return f"I've flipped the flash card to show the {'answer' if card.is_flipped else 'question'}"
+        discount_text = f" with {product['discountPercentage']:.1f}% off" if product['discountPercentage'] > 0 else ""
+        return f"I've created a product card for {product['title']} at ${product['price']:.2f}{discount_text}!"
     
     @function_tool
-    async def create_quiz(self, context: RunContext[UserData], questions: List[QuizQuestionDict]):
-        """Create a new quiz with multiple choice questions and display it to the user.
+    async def create_product_selection_quiz(self, context: RunContext[UserData], category: Optional[str] = None, count: int = 8):
+        """Create a product selection quiz (like Tinder for products) where users can like/dislike products to get recommendations and earn discounts.
         
         Args:
-            questions: A list of question objects. Each question object should have:
-                - text: The question text
-                - answers: A list of answer objects, each with:
-                    - text: The answer text
-                    - is_correct: Boolean indicating if this is the correct answer
+            category: Optional category to focus on (e.g., 'beauty', 'electronics')
+            count: Number of products to include in the quiz (default 8)
         """
         userdata = context.userdata
-        quiz = userdata.add_quiz(questions)
+        
+        # Filter products by category if specified
+        available_products = PRODUCTS
+        if category:
+            available_products = [p for p in PRODUCTS if p['category'].lower() == category.lower()]
+        
+        if len(available_products) < count:
+            return f"Not enough products available. Found {len(available_products)} products."
+        
+        # Select diverse products (different categories, price ranges, ratings)
+        selected_products = random.sample(available_products, min(count, len(available_products)))
+        
+        quiz = userdata.add_product_quiz(selected_products)
         
         # Get the room from the userdata
         if not userdata.ctx or not userdata.ctx.room:
-            return f"Created a quiz, but couldn't access the room to send it."
+            return f"Created a product quiz, but couldn't access the room to send it."
         
         room = userdata.ctx.room
         
-        # Get the first participant in the room (should be the client)
+        # Get the first participant in the room
         participants = room.remote_participants
         if not participants:
-            return f"Created a quiz, but no participants found to send it to."
+            return f"Created a product quiz, but no participants found to send it to."
         
-        # Get the first participant from the dictionary of remote participants
         participant = next(iter(participants.values()), None)
         if not participant:
-            return f"Created a quiz, but couldn't get the first participant."
+            return f"Created a product quiz, but couldn't get the first participant."
         
-        # Format questions for client
-        client_questions = []
-        for q in quiz.questions:
-            client_answers = []
-            for a in q.answers:
-                client_answers.append({
-                    "id": a.id,
-                    "text": a.text
-                })
-            client_questions.append({
-                "id": q.id,
-                "text": q.text,
-                "answers": client_answers
+        # Format products for client
+        client_products = []
+        for card in quiz.products:
+            # Find the original product data
+            product = next((p for p in PRODUCTS if p['id'] == card.product_id), None)
+            if product:
+                client_products.append({
+                    "id": card.id,
+                    "product_id": card.product_id,
+                    "title": card.title,
+                    "description": card.description,
+                    "price": card.price,
+                    "image": card.image,
+                    "category": card.category,
+                    "rating": product['rating'],
+                    "discount_percentage": product['discountPercentage'],
+                    "brand": product.get('brand', '')
             })
         
         payload = {
             "action": "show",
             "id": quiz.id,
-            "questions": client_questions
+            "products": client_products,
+            "discount_percentage": quiz.discount_percentage,
+            "instructions": "Swipe right (like) on products you're interested in! Like at least 3 products to unlock a 5% discount."
         }
         
-        # Make sure payload is properly serialized
         json_payload = json.dumps(payload)
-        logger.info(f"Sending quiz payload: {json_payload}")
+        logger.info(f"Sending product quiz payload: {json_payload}")
         await room.local_participant.perform_rpc(
             destination_identity=participant.identity,
-            method="client.quiz",
+            method="client.productquiz",
             payload=json_payload
         )
         
-        return f"I've created a quiz with {len(questions)} questions. Please answer them when you're ready."
+        category_text = f" from {category}" if category else ""
+        return f"I've created a fun product selection quiz with {count} products{category_text}! Swipe through them and like the ones you're interested in. If you like at least 3, you'll get a 5% discount!"
 
     async def on_enter(self):
         await asyncio.sleep(5)
         self.session.generate_reply()
 
 async def entrypoint(ctx: JobContext):
-    agent = AvatarAgent()
+    agent = PersonalShopperAgent()
     await ctx.connect()
 
     # Create a single AgentSession with userdata
@@ -417,110 +519,86 @@ async def entrypoint(ctx: JobContext):
     # Create the avatar session
     avatar = tavus.AvatarSession(
         replica_id="r4c41453d2",
-        # replica_id="rf4703150052",
         persona_id="p2fbd605"
     )
 
-    # Register RPC method for flipping flash cards from client
-    async def handle_flip_flash_card(rpc_data):
+    # Register RPC method for handling product card interactions
+    async def handle_product_card_action(rpc_data):
         try:
-            logger.info(f"Received flash card flip payload: {rpc_data}")
+            logger.info(f"Received product card action payload: {rpc_data}")
             
-            # Extract the payload from the RpcInvocationData object
             payload_str = rpc_data.payload
             logger.info(f"Extracted payload string: {payload_str}")
             
-            # Parse the JSON payload
             payload_data = json.loads(payload_str)
             logger.info(f"Parsed payload data: {payload_data}")
             
+            action = payload_data.get("action")
             card_id = payload_data.get("id")
             
-            if card_id:
-                card = userdata.flip_flash_card(card_id)
+            if action == "view_details" and card_id:
+                card = userdata.get_product_card(card_id)
                 if card:
-                    logger.info(f"Flipped flash card {card_id}, is_flipped: {card.is_flipped}")
-                    # Send a message to the user via the agent, we're disabling this for now.
-                    # session.generate_reply(user_input=(f"Please describe the {'answer' if card.is_flipped else 'question'}"))
+                    session.say(f"Let me tell you more about {card.title}. {card.description} It's priced at ${card.price:.2f} and has a {card.rating:.1f} star rating.")
                 else:
-                    logger.error(f"Card with ID {card_id} not found")
-            else:
-                logger.error("No card ID found in payload")
+                    logger.error(f"Product card with ID {card_id} not found")
                 
             return None
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parsing error for payload '{rpc_data.payload}': {e}")
+            logger.error(f"JSON parsing error for product card payload '{rpc_data.payload}': {e}")
             return f"error: {str(e)}"
         except Exception as e:
-            logger.error(f"Error handling flip flash card: {e}")
+            logger.error(f"Error handling product card action: {e}")
             return f"error: {str(e)}"
     
-    # Register RPC method for handling quiz submissions
-    async def handle_submit_quiz(rpc_data):
+    # Register RPC method for handling product quiz submissions
+    async def handle_product_quiz_submission(rpc_data):
         try:
-            logger.info(f"Received quiz submission payload: {rpc_data}")
+            logger.info(f"Received product quiz submission payload: {rpc_data}")
             
-            # Extract the payload from the RpcInvocationData object
             payload_str = rpc_data.payload
             logger.info(f"Extracted quiz submission string: {payload_str}")
             
-            # Parse the JSON payload
             payload_data = json.loads(payload_str)
             logger.info(f"Parsed quiz submission data: {payload_data}")
             
             quiz_id = payload_data.get("id")
-            user_answers = payload_data.get("answers", {})
+            selections = payload_data.get("selections", {})
             
             if not quiz_id:
                 logger.error("No quiz ID found in payload")
                 return "error: No quiz ID found in payload"
                 
-            # Check the quiz answers
-            quiz_results = userdata.check_quiz_answers(quiz_id, user_answers)
-            if not quiz_results:
-                logger.error(f"Quiz with ID {quiz_id} not found")
-                return "error: Quiz not found"
+            # Process the product selections
+            liked_products = userdata.process_product_selections(quiz_id, selections)
             
-            # Count correct answers
-            correct_count = sum(1 for _, _, _, is_correct in quiz_results if is_correct)
-            total_count = len(quiz_results)
+            if not liked_products:
+                session.say("Thanks for trying the product quiz! I didn't see any products you liked, but that's okay. Let me know what you're looking for and I'll help you find something perfect!")
+                return "success"
             
-            # Create a verbal response for the agent to say
-            result_summary = f"You got {correct_count} out of {total_count} questions correct."
+            # Count liked products and determine if they get discount
+            liked_count = len(liked_products)
             
-            # Generate feedback for each question
-            feedback_details = []
-            for question, selected_answer, correct_answer, is_correct in quiz_results:
-                if is_correct:
-                    feedback = f"Question: {question.text}\nYour answer: {selected_answer.text} ✓ Correct!"
-                else:
-                    feedback = f"Question: {question.text}\nYour answer: {selected_answer.text if selected_answer else 'None'} ✗ Incorrect. The correct answer is: {correct_answer.text}"
-                    
-                    # Create a flash card for incorrectly answered questions
-                    card = userdata.add_flash_card(question.text, correct_answer.text)
-                    participant = next(iter(ctx.room.remote_participants.values()), None)
-                    if participant:
-                        flash_payload = {
-                            "action": "show",
-                            "id": card.id,
-                            "question": card.question,
-                            "answer": card.answer,
-                            "index": len(userdata.flash_cards) - 1
-                        }
-                        json_flash_payload = json.dumps(flash_payload)
-                        await ctx.room.local_participant.perform_rpc(
-                            destination_identity=participant.identity,
-                            method="client.flashcard",
-                            payload=json_flash_payload
-                        )
+            if liked_count >= 3:
+                # They get the discount!
+                response = f"Fantastic! You liked {liked_count} products, which means you've unlocked a 5% discount on your next purchase! "
+                response += "Here's what caught your eye: "
                 
-                feedback_details.append(feedback)
-            
-            detailed_feedback = "\n\n".join(feedback_details)
-            full_response = f"{result_summary}\n\n{detailed_feedback}"
+                product_names = [p['title'] for p in liked_products[:3]]
+                response += ", ".join(product_names)
+                
+                if liked_count > 3:
+                    response += f" and {liked_count - 3} more! "
+                
+                response += "I can see you have great taste! Would you like me to show you more products similar to these?"
+                
+            else:
+                response = f"Thanks for the feedback! You liked {liked_count} products. "
+                response += "You need to like at least 3 products to unlock the 5% discount, but I can still help you find more options. "
+                response += "What specifically interests you about the products you selected?"
             
             # Have the agent say the results
-            session.say(full_response)
+            session.say(response)
             
             return "success"
         except json.JSONDecodeError as e:
@@ -530,16 +608,16 @@ async def entrypoint(ctx: JobContext):
             logger.error(f"Error handling quiz submission: {e}")
             return f"error: {str(e)}"
     
-    # Register RPC methods - The method names need to match exactly what the client is calling
+    # Register RPC methods
     logger.info("Registering RPC methods")
     ctx.room.local_participant.register_rpc_method(
-        "agent.flipFlashCard",
-        handle_flip_flash_card
+        "agent.productCardAction",
+        handle_product_card_action
     )
     
     ctx.room.local_participant.register_rpc_method(
-        "agent.submitQuiz",
-        handle_submit_quiz
+        "agent.submitProductQuiz",
+        handle_product_quiz_submission
     )
 
     # Start the avatar with the same session that has userdata

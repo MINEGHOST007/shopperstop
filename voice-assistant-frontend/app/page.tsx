@@ -3,8 +3,8 @@
 import { CloseIcon } from "@/components/CloseIcon";
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import TranscriptionView from "@/components/TranscriptionView";
-import FlashCardContainer from "@/components/FlashCardContainer";
-import QuizContainer from "@/components/QuizContainer";
+import ProductCardContainer from "@/components/ProductCardContainer";
+import ProductQuizContainer from "@/components/ProductQuizContainer";
 import {
   BarVisualizer,
   DisconnectButton,
@@ -81,10 +81,10 @@ function SimpleVoiceAssistant(props: { onConnectButtonClicked: () => void }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="uppercase px-4 py-2 bg-white text-black rounded-md"
+              className="uppercase px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg"
               onClick={() => props.onConnectButtonClicked()}
             >
-              Start a conversation
+              🛍️ Start Shopping with Sarah
             </motion.button>
           </motion.div>
         ) : (
@@ -99,8 +99,8 @@ function SimpleVoiceAssistant(props: { onConnectButtonClicked: () => void }) {
             <AgentVisualizer />
             <div className="flex-1 w-full">
               <TranscriptionView />
-              <FlashCardContainer />
-              <QuizContainer />
+              <ProductCardContainer />
+              <ProductQuizContainer />
             </div>
             <div className="w-full">
               <ControlBar onConnectButtonClicked={props.onConnectButtonClicked} />
@@ -149,10 +149,10 @@ function ControlBar(props: { onConnectButtonClicked: () => void }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, top: "-10px" }}
             transition={{ duration: 1, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="uppercase absolute left-1/2 -translate-x-1/2 px-4 py-2 bg-white text-black rounded-md"
+            className="uppercase absolute left-1/2 -translate-x-1/2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg"
             onClick={() => props.onConnectButtonClicked()}
           >
-            Start a conversation
+            🛍️ Start Shopping with Sarah
           </motion.button>
         )}
       </AnimatePresence>

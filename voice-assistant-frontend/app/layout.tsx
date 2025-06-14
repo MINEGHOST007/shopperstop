@@ -9,7 +9,8 @@ const publicSans400 = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Voice Assistant",
+  title: "Sarah - Personal Shopping Assistant",
+  description: "AI-powered personal shopping assistant with voice interaction, product recommendations, and discount rewards",
 };
 
 export default function RootLayout({
