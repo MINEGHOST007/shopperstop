@@ -232,7 +232,27 @@ class PersonalShopperAgent(Agent):
 
     @function_tool(
         name="search_products",
-        description="Enhanced search for products using multiple keywords and comprehensive filtering across all product fields including title, description, category, brand, tags, reviews, warranty, shipping info, and more. Automatically displays results in visual grid."
+        description="""
+        COMPREHENSIVE PRODUCT SEARCH FUNCTION
+        
+        This function searches through ALL products using keywords and filters. It is the PRIMARY function for finding products.
+        
+        REQUIRED PARAMETER:
+        - keywords: ALWAYS provide search keywords (product names, brands, features, etc.) - this is MANDATORY
+        
+        USAGE EXAMPLES:
+        - search_products(keywords=["headphones", "wireless"], brands=["Sony", "Bose"])
+        - search_products(keywords=["phone", "smartphone"], min_price=200, max_price=800)
+        - search_products(keywords=["watch", "luxury"], brands=["Rolex", "Omega"])
+        - search_products(keywords=["laptop", "gaming"], categories=["electronics"])
+        
+        NEVER call this function without keywords! If user asks for brand products, use brand name as keywords.
+        Example: For "show me Rolex watches" use keywords=["Rolex", "watch"]
+        
+        ⚠️ IMPORTANT: This function automatically displays results in a visual grid. 
+        DO NOT call display_products_grid separately after using search_products!
+        The visual display happens automatically - no additional display calls needed.
+        """
     )
     async def search_products(self, context: RunContext[UserData], keywords: List[str], limit: int = 5, 
                             categories: Optional[List[str]] = None, min_price: Optional[float] = None, 
@@ -241,21 +261,34 @@ class PersonalShopperAgent(Agent):
         """Enhanced search for products using multiple keywords and comprehensive filtering.
 
         Args:
-            keywords: List of search keywords (product name, description, features, etc.)
+            keywords: REQUIRED - List of search keywords (product name, description, features, brand, etc.)
+                     Examples: ["headphones", "wireless"], ["phone", "smartphone"], ["Rolex", "watch"]
+                     NEVER leave this empty - always provide relevant search terms
             limit: Maximum number of products to return (default 5)
-            categories: Filter by specific categories
-            min_price: Minimum price filter
-            max_price: Maximum price filter
-            min_rating: Minimum rating filter
-            brands: Filter by specific brands
-            include_out_of_stock: Whether to include out-of-stock items
+            categories: Optional filter by specific categories (e.g., ["electronics", "beauty"])
+            min_price: Optional minimum price filter in USD
+            max_price: Optional maximum price filter in USD  
+            min_rating: Optional minimum rating filter (1-5 stars)
+            brands: Optional filter by specific brands (e.g., ["Apple", "Samsung"])
+            include_out_of_stock: Whether to include out-of-stock items (default True)
+        
+        Returns:
+            String with search results and automatically displays visual grid
         """
         if not PRODUCTS:
             return "No products available in the database."
         
+        # Validate keywords parameter
+        if not keywords:
+            return "ERROR: Keywords parameter is required for product search. Please provide search keywords like product names, brands, features, etc. Example: keywords=['headphones', 'wireless']"
+        
         # Convert single keyword to list for backward compatibility
         if isinstance(keywords, str):
             keywords = [keywords]
+            
+        # Ensure keywords is not empty after conversion
+        if not keywords or all(not k.strip() for k in keywords):
+            return "ERROR: Empty keywords provided. Please provide meaningful search terms like product names, brands, or features."
         
         # Create comprehensive searchable content for each product
         searchable_products = []
@@ -368,14 +401,77 @@ class PersonalShopperAgent(Agent):
                 asyncio.create_task(
                     self.display_products_grid(context, product_ids, f"Search Results: {', '.join(keywords)}")
                 )
+                # Add note to prevent duplicate calls
+                result += f"\n🎯 Displaying {len(top_products)} products in visual grid automatically."
             except Exception as e:
                 logger.error(f"Failed to auto-display search results: {e}")
         
         return result
 
     @function_tool(
+        name="search_products_by_brand",
+        description="""
+        BRAND-SPECIFIC PRODUCT SEARCH
+        
+        Specialized function to find products from specific brands. Use this when customers ask for products from particular brands.
+        
+        USAGE EXAMPLES:
+        - search_products_by_brand(brand_name="Apple", product_type="phone")
+        - search_products_by_brand(brand_name="Nike", product_type="shoes") 
+        - search_products_by_brand(brand_name="Rolex", product_type="watch")
+        - search_products_by_brand(brand_name="Samsung", limit=10)
+        
+        This is a convenience wrapper around search_products with brand focus.
+        
+        ⚠️ IMPORTANT: Automatically displays results in visual grid - no additional display calls needed!
+        """
+    )
+    async def search_products_by_brand(self, context: RunContext[UserData], brand_name: str, 
+                                     product_type: Optional[str] = None, limit: int = 8) -> str:
+        """Search for products by specific brand.
+
+        Args:
+            brand_name: Name of the brand to search for (e.g., "Apple", "Nike", "Rolex")
+            product_type: Optional product type to narrow search (e.g., "watch", "phone", "shoes")
+            limit: Maximum number of products to return (default 8)
+        
+        Returns:
+            String with search results and automatically displays visual grid
+        """
+        # Build keywords from brand and product type
+        keywords = [brand_name]
+        if product_type:
+            keywords.append(product_type)
+        
+        # Use the main search function with brand filter
+        return await self.search_products(
+            context=context,
+            keywords=keywords,
+            brands=[brand_name],
+            limit=limit
+        )
+
+    @function_tool(
         name="display_products_grid",
-        description="Display multiple products in a beautiful visual grid layout on the right side of the screen while speaking. Perfect for showcasing product collections, recommendations, or search results with images, prices, ratings, and details."
+        description="""
+        MANUAL PRODUCT GRID DISPLAY
+        
+        ⚠️ WARNING: Only use this function for custom product collections or when you have specific product IDs.
+        
+        DO NOT use this function after:
+        - search_products() - already displays automatically
+        - search_products_by_brand() - already displays automatically  
+        - get_top_discounts() - already displays automatically
+        - get_products_by_category() - already displays automatically
+        - get_products_in_price_range() - already displays automatically
+        
+        Use this ONLY for:
+        - Custom curated product collections
+        - Specific product recommendations you've identified
+        - Manual product showcases with known product IDs
+        
+        Make sure you have the correct product IDs from previous search results!
+        """
     )
     async def display_products_grid(self, context: RunContext[UserData], product_ids: List[int], 
                                    grid_title: str = "Product Collection") -> str:
@@ -408,6 +504,13 @@ class PersonalShopperAgent(Agent):
         
         if not products_to_display:
             return f"No valid products found for IDs: {product_ids}"
+            
+        # Warn if potentially showing wrong products (first few IDs are often beauty products)
+        if len(product_ids) > 1 and all(pid <= 10 for pid in product_ids[:3]):
+            logger.warning(f"Potentially displaying wrong products - IDs {product_ids[:5]} are typically beauty/fragrance products, not search results")
+            
+        # Log what we're actually displaying for debugging
+        logger.info(f"Displaying products: {[(p['id'], p['title'][:30], p['category']) for p in products_to_display[:3]]}")
         
         # Prepare payload for grid display
         payload = {
@@ -459,13 +562,30 @@ class PersonalShopperAgent(Agent):
 
     @function_tool(
         name="get_top_discounts",
-        description="Find and display products with the highest discount percentages to help customers save money. Shows original prices, discounted prices, and savings amounts. Automatically displays results in visual grid."
+        description="""
+        FIND BEST DEALS AND DISCOUNTS
+        
+        This function finds products with the highest discount percentages to help customers save maximum money.
+        Perfect for deal hunters and budget-conscious shoppers.
+        
+        USAGE:
+        - get_top_discounts() - Get top 10 discounted products
+        - get_top_discounts(limit=5) - Get top 5 deals
+        - get_top_discounts(limit=20) - Get more extensive list
+        
+        Shows original prices, sale prices, discount percentages, and total savings.
+        
+        ⚠️ IMPORTANT: Automatically displays results in visual grid - no additional display calls needed!
+        """
     )
     async def get_top_discounts(self, context: RunContext[UserData], limit: int = 10) -> str:
-        """Get products with the highest discount percentages.
+        """Get products with the highest discounts to help customers save money.
 
         Args:
-            limit: Maximum number of products to return (default 10)
+            limit: Maximum number of discounted products to return (default 10, max recommended 20)
+        
+        Returns:
+            String with discount details and automatically displays visual grid
         """
         if not PRODUCTS:
             return "No products available in the database."
@@ -503,14 +623,36 @@ class PersonalShopperAgent(Agent):
 
     @function_tool(
         name="get_products_by_category",
-        description="Browse and display products from a specific category like beauty, electronics, clothing, etc. Shows top-rated products in the category sorted by rating and discounts. Automatically displays results in visual grid."
+        description="""
+        BROWSE PRODUCTS BY CATEGORY
+        
+        This function shows products from specific categories like beauty, electronics, clothing, etc.
+        Perfect for category browsing and discovery shopping.
+        
+        POPULAR CATEGORIES: beauty, electronics, clothing, home-decoration, fragrances, groceries, 
+                           kitchen-accessories, mens-shirts, mens-shoes, mens-watches, mobile-accessories,
+                           womens-bags, womens-dresses, womens-jewellery, womens-shoes, womens-watches
+        
+        USAGE EXAMPLES:
+        - get_products_by_category(category="beauty") - Beauty products
+        - get_products_by_category(category="electronics", limit=10) - Electronics
+        - get_products_by_category(category="mens-watches") - Men's watches
+        
+        Shows top-rated products in the category sorted by rating and discounts.
+        
+        ⚠️ IMPORTANT: Automatically displays results in visual grid - no additional display calls needed!
+        """
     )
     async def get_products_by_category(self, context: RunContext[UserData], category: str, limit: int = 8) -> str:
-        """Get products from a specific category.
+        """Get top products from a specific category with ratings and discounts.
 
         Args:
-            category: Product category (e.g., 'beauty', 'electronics', 'clothing')
-            limit: Maximum number of products to return (default 8)
+            category: REQUIRED - Product category name (e.g., 'beauty', 'electronics', 'clothing')
+                     Use exact category names from the product database
+            limit: Maximum number of products to return (default 8, max recommended 15)
+        
+        Returns:
+            String with category products and automatically displays visual grid
         """
         if not PRODUCTS:
             return "No products available in the database."
@@ -547,15 +689,32 @@ class PersonalShopperAgent(Agent):
 
     @function_tool(
         name="get_products_in_price_range",
-        description="Find and display products within a specific price range to match customer budgets. Shows best-rated products in the price range sorted by rating and discounts. Automatically displays results in visual grid."
+        description="""
+        FIND PRODUCTS BY PRICE RANGE
+        
+        This function finds products within specific price ranges to match customer budgets.
+        Perfect for budget-conscious shopping and price-based filtering.
+        
+        USAGE EXAMPLES:
+        - get_products_in_price_range(min_price=10.0, max_price=50.0) - Budget products $10-50
+        - get_products_in_price_range(min_price=100.0, max_price=500.0, limit=10) - Mid-range $100-500
+        - get_products_in_price_range(min_price=0.0, max_price=25.0) - Under $25 deals
+        
+        Shows best-rated products in the price range sorted by rating and discounts.
+        
+        ⚠️ IMPORTANT: Automatically displays results in visual grid - no additional display calls needed!
+        """
     )
     async def get_products_in_price_range(self, context: RunContext[UserData], min_price: float, max_price: float, limit: int = 8) -> str:
-        """Get products within a specific price range.
+        """Get best products within a specific price range sorted by rating and discounts.
 
         Args:
-            min_price: Minimum price
-            max_price: Maximum price
-            limit: Maximum number of products to return (default 8)
+            min_price: REQUIRED - Minimum price in USD (e.g., 10.0, 50.0, 100.0)
+            max_price: REQUIRED - Maximum price in USD (e.g., 50.0, 200.0, 1000.0)
+            limit: Maximum number of products to return (default 8, max recommended 15)
+        
+        Returns:
+            String with price range results and automatically displays visual grid
         """
         if not PRODUCTS:
             return "No products available in the database."
