@@ -5,6 +5,8 @@ import { NoAgentNotification } from "@/components/NoAgentNotification";
 import TranscriptionView from "@/components/TranscriptionView";
 import ProductCardContainer from "@/components/ProductCardContainer";
 import ProductQuizContainer from "@/components/ProductQuizContainer";
+import ProductVisualizationPanel from "@/components/ProductVisualizationPanel";
+import EcommerceHomepage from "@/components/EcommerceHomepage";
 import {
   BarVisualizer,
   DisconnectButton,
@@ -21,8 +23,12 @@ import type { ConnectionDetails } from "./api/connection-details/route";
 
 export default function Page() {
   const [room] = useState(new Room());
+  const [mode, setMode] = useState<"ecommerce" | "voice-assistant">("ecommerce");
 
   const onConnectButtonClicked = useCallback(async () => {
+    // Switch to voice assistant mode first
+    setMode("voice-assistant");
+    
     // Generate room connection details, including:
     //   - A random Room name
     //   - A random Participant name
@@ -52,17 +58,27 @@ export default function Page() {
   }, [room]);
 
   return (
-    <main data-lk-theme="default" className="h-full grid content-center bg-[var(--lk-bg)]">
+    <main data-lk-theme="default" className="min-h-screen bg-[var(--lk-bg)]">
       <RoomContext.Provider value={room}>
-        <div className="lk-room-container max-w-[1024px] w-[90vw] mx-auto max-h-[90vh]">
-          <SimpleVoiceAssistant onConnectButtonClicked={onConnectButtonClicked} />
+        <div className="h-full w-full">
+          {mode === "ecommerce" ? (
+            <EcommerceHomepage onStartConversation={onConnectButtonClicked} />
+          ) : (
+            <SimpleVoiceAssistant 
+              onConnectButtonClicked={onConnectButtonClicked}
+              onBackToEcommerce={() => setMode("ecommerce")}
+            />
+          )}
         </div>
       </RoomContext.Provider>
     </main>
   );
 }
 
-function SimpleVoiceAssistant(props: { onConnectButtonClicked: () => void }) {
+function SimpleVoiceAssistant(props: { 
+  onConnectButtonClicked: () => void; 
+  onBackToEcommerce: () => void;
+}) {
   const { state: agentState } = useVoiceAssistant();
 
   return (
@@ -94,17 +110,44 @@ function SimpleVoiceAssistant(props: { onConnectButtonClicked: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex flex-col items-center gap-4 h-full"
+            className="flex h-screen"
           >
-            <AgentVisualizer />
-            <div className="flex-1 w-full">
-              <TranscriptionView />
-              <ProductCardContainer />
-              <ProductQuizContainer />
+            {/* Left Panel - Chat & Agent */}
+            <div className="w-1/3 min-w-[400px] flex flex-col border-r border-gray-700 bg-gray-900">
+              {/* Header with Back Button */}
+              <div className="bg-gray-800 p-4 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={props.onBackToEcommerce}
+                    className="flex items-center text-gray-300 hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back to Shop
+                  </button>
+                  <h2 className="text-white font-semibold">Voice Assistant</h2>
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col items-center gap-4 p-4">
+                <AgentVisualizer />
+                <div className="flex-1 w-full">
+                  <TranscriptionView />
+                </div>
+                <div className="w-full">
+                  <ControlBar onConnectButtonClicked={props.onConnectButtonClicked} />
+                </div>
+              </div>
             </div>
-            <div className="w-full">
-              <ControlBar onConnectButtonClicked={props.onConnectButtonClicked} />
+            
+            {/* Right Panel - Product Visualization */}
+            <div className="flex-1 bg-white">
+              <ProductVisualizationPanel />
             </div>
+            
+            {/* Overlay Components */}
+            <ProductCardContainer />
+            <ProductQuizContainer />
             <RoomAudioRenderer />
             <NoAgentNotification state={agentState} />
           </motion.div>

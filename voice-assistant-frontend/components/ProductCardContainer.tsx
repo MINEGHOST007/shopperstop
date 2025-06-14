@@ -114,7 +114,7 @@ export default function ProductCardContainer() {
           initial={{ opacity: 0, x: 100 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 100 }}
-          className="fixed right-8 top-1/4 w-96 bg-gray-900 p-4 rounded-lg shadow-xl z-50"
+          className="fixed right-8 top-1/4 w-96 bg-gray-900 p-4 rounded-lg shadow-xl z-50 max-h-[80vh] overflow-y-auto"
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-white">Product Recommendation</h2>
