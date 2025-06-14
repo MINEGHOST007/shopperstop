@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoomContext, useVoiceAssistant } from "@livekit/components-react";
-import Quiz, { QuizQuestion, QuizAnswer } from "./Quiz";
+import Quiz, { QuizQuestion } from "./Quiz";
 
 export interface SubmittedQuiz {
   id: string;
@@ -21,13 +21,18 @@ export default function QuizContainer() {
   useEffect(() => {
     if (!room) return;
 
+    // Type guard for RPC data
+    const isValidRPCData = (data: unknown): data is { payload: unknown } => {
+      return typeof data === 'object' && data !== null && 'payload' in data;
+    };
+
     // Register RPC method to receive quizzes
-    const handleShowQuiz = async (data: any): Promise<string> => {
+    const handleShowQuiz = async (data: unknown): Promise<string> => {
       try {
         console.log("Received quiz RPC data:", data);
         
         // Check for the correct property in the RPC data
-        if (!data || data.payload === undefined) {
+        if (!isValidRPCData(data) || data.payload === undefined) {
           console.error("Invalid RPC data received:", data);
           return "Error: Invalid RPC data format";
         }

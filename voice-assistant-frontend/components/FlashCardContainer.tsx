@@ -13,13 +13,18 @@ export default function FlashCardContainer() {
   useEffect(() => {
     if (!room) return;
 
+    // Type guard for RPC data
+    const isValidRPCData = (data: unknown): data is { payload: unknown } => {
+      return typeof data === 'object' && data !== null && 'payload' in data;
+    };
+
     // Register RPC method to receive flash cards
-    const handleShowFlashCard = async (data: any): Promise<string> => {
+    const handleShowFlashCard = async (data: unknown): Promise<string> => {
       try {
         console.log("Received flashcard RPC data:", data);
         
         // Check for the correct property in the RPC data
-        if (!data || data.payload === undefined) {
+        if (!isValidRPCData(data) || data.payload === undefined) {
           console.error("Invalid RPC data received:", data);
           return "Error: Invalid RPC data format";
         }

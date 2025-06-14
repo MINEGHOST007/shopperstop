@@ -13,12 +13,17 @@ export default function ProductCardContainer() {
   useEffect(() => {
     if (!room) return;
 
+    // Type guard for RPC data
+    const isValidRPCData = (data: unknown): data is { payload: unknown } => {
+      return typeof data === 'object' && data !== null && 'payload' in data;
+    };
+
     // Register RPC method to receive product cards
-    const handleShowProductCard = async (data: any): Promise<string> => {
+    const handleShowProductCard = async (data: unknown): Promise<string> => {
       try {
         console.log("Received product card RPC data:", data);
         
-        if (!data || data.payload === undefined) {
+        if (!isValidRPCData(data) || data.payload === undefined) {
           console.error("Invalid RPC data received:", data);
           return "Error: Invalid RPC data format";
         }
@@ -172,7 +177,7 @@ export default function ProductCardContainer() {
           {/* Shopping hint */}
           <div className="mt-4 p-3 bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-lg border border-green-500/30">
             <p className="text-sm text-green-300 text-center">
-              💡 Ask me to find similar products or create a product quiz to discover more items you'll love!
+              💡 Ask me to find similar products or create a product quiz to discover more items you&apos;ll love!
             </p>
           </div>
         </motion.div>

@@ -1,6 +1,7 @@
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { useState } from "react";
 import { Heart, X, Star, Package, ShoppingBag } from "lucide-react";
+import Image from "next/image";
 
 export interface ProductQuizItem {
   id: string;
@@ -41,7 +42,7 @@ export default function ProductSelectionQuiz({
           <ShoppingBag className="w-16 h-16 mx-auto text-green-500 mb-4" />
           <h3 className="text-xl font-bold text-gray-800 mb-2">Quiz Complete!</h3>
           <p className="text-gray-600 mb-4">
-            Thanks for sharing your preferences. I'll use this to help you find amazing products!
+            Thanks for sharing your preferences. I&apos;ll use this to help you find amazing products!
           </p>
           <button
             onClick={onComplete}
@@ -56,7 +57,7 @@ export default function ProductSelectionQuiz({
 
   const currentProduct = products[currentIndex];
   
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
     const threshold = 100;
     
     if (info.offset.x > threshold) {
@@ -72,7 +73,7 @@ export default function ProductSelectionQuiz({
     }
   };
 
-  const handleDrag = (event: any, info: PanInfo) => {
+  const handleDrag = (_event: unknown, info: PanInfo) => {
     if (info.offset.x > 50) {
       setDragDirection('right');
     } else if (info.offset.x < -50) {
@@ -180,10 +181,12 @@ export default function ProductSelectionQuiz({
             {/* Product Image */}
             <div className="relative h-64">
               {currentProduct.image ? (
-                <img
+                <Image
                   src={currentProduct.image}
                   alt={currentProduct.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               ) : (
                 <div className="w-full h-full bg-gray-200 flex items-center justify-center">

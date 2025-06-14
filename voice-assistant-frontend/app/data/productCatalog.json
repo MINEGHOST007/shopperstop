@@ -1,0 +1,417 @@
+{
+  "catalog": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-06-14",
+    "totalProducts": 6,
+    "categories": ["Electronics", "Furniture", "Fashion", "Home & Kitchen"]
+  },
+  "products": {
+    "WM009": {
+      "id": "WM009",
+      "sku": "iphone-x-64gb-silver",
+      "name": "iPhone X",
+      "brand": "Apple",
+      "category": "Electronics",
+      "subcategory": "Smartphones",
+      "price": {
+        "current": 699.99,
+        "original": 999.99,
+        "currency": "USD",
+        "discount": 30
+      },
+      "description": "Apple iPhone X with 5.8-inch Super Retina OLED display, Face ID, and dual 12MP cameras. Experience the future of smartphones with edge-to-edge display and wireless charging.",
+      "features": [
+        "5.8-inch Super Retina OLED display",
+        "Face ID facial recognition",
+        "Dual 12MP wide and telephoto cameras",
+        "A11 Bionic chip",
+        "Wireless charging",
+        "Water and dust resistant (IP67)"
+      ],
+      "specifications": {
+        "Display": "5.8-inch Super Retina OLED",
+        "Resolution": "2436 x 1125 pixels",
+        "Processor": "A11 Bionic chip",
+        "RAM": "3 GB",
+        "Storage": "64 GB",
+        "Rear Camera": "Dual 12MP (wide + telephoto)",
+        "Front Camera": "7MP TrueDepth",
+        "Battery": "2716 mAh",
+        "OS": "iOS 15",
+        "Water Resistance": "IP67"
+      },
+      "dimensions": {
+        "width": 70.9,
+        "height": 143.6,
+        "depth": 7.7,
+        "unit": "mm"
+      },
+      "weight": {
+        "value": 174,
+        "unit": "g"
+      },
+      "colors": ["Silver", "Space Gray"],
+      "availability": {
+        "inStock": true,
+        "quantity": 42,
+        "warehouse": "CA-001"
+      },
+      "rating": {
+        "average": 4.7,
+        "count": 3891,
+        "distribution": {
+          "5": 2950,
+          "4": 700,
+          "3": 180,
+          "2": 40,
+          "1": 21
+        }
+      },
+      "assets": {
+        "images": [
+          "/assets/images/iphoneX.png",
+          "/assets/images/iphoneX2.jpg"
+        ],
+        "primaryImage": "/assets/images/iphoneX.png",
+        "model3D": "/assets/models/iphoneX.glb",
+        "modelColor": "#e5e5e5",
+        "modelScale": 1.0
+      },
+      "seo": {
+        "title": "Apple iPhone X - 5.8-inch Super Retina Display",
+        "description": "Buy Apple iPhone X with Face ID, dual cameras, and wireless charging. Available in Silver and Space Gray.",
+        "keywords": ["iPhone X", "Apple", "smartphone", "Face ID", "wireless charging"]
+      }
+    },
+    "FUR001": {
+      "id": "FUR001",
+      "sku": "sofa-modern-living-001",
+      "name": "Modern Living Room Sofa",
+      "brand": "ComfyHome",
+      "category": "Furniture",
+      "subcategory": "Sofas",
+      "price": {
+        "current": 499.99,
+        "original": 599.99,
+        "currency": "USD",
+        "discount": 16
+      },
+      "description": "A comfortable and stylish modern sofa for your living room. Upholstered in premium fabric.",
+      "features": [
+        "Premium fabric upholstery",
+        "Solid wood frame",
+        "Seats 3 comfortably",
+        "Modern design"
+      ],
+      "specifications": {
+        "Material": "Fabric, Wood",
+        "SeatingCapacity": "3",
+        "ColorOptions": "Grey, Beige, Blue"
+      },
+      "dimensions": {
+        "width": 200,
+        "height": 85,
+        "depth": 90,
+        "unit": "cm"
+      },
+      "weight": {
+        "value": 45,
+        "unit": "kg"
+      },
+      "colors": ["Grey", "Beige", "Blue"],
+      "availability": {
+        "inStock": true,
+        "quantity": 15,
+        "warehouse": "FUR-WH-01"
+      },
+      "rating": {
+        "average": 4.6,
+        "count": 150,
+        "distribution": {
+          "5": 100,
+          "4": 40,
+          "3": 10,
+          "2": 0,
+          "1": 0
+        }
+      },
+      "assets": {
+        "images": [
+          "/assets/images/sofa_default.png"
+        ],
+        "primaryImage": "/assets/images/sofa_default.png",
+        "model3D": "/assets/models/sofa.glb",
+        "modelColor": "#a0a0a0",
+        "modelScale": 1.0
+      },
+      "seo": {
+        "title": "Modern Living Room Sofa - Comfortable & Stylish",
+        "description": "Shop the best modern living room sofa. High-quality materials and design.",
+        "keywords": ["sofa", "furniture", "living room", "modern sofa"]
+      }
+    },
+    "ELE002": {
+      "id": "ELE002",
+      "sku": "mi-tv-4k-55",
+      "name": "MI Smart TV 4K 55-inch",
+      "brand": "Xiaomi",
+      "category": "Electronics",
+      "subcategory": "Televisions",
+      "price": {
+        "current": 399.00,
+        "original": 449.00,
+        "currency": "USD",
+        "discount": 11
+      },
+      "description": "Experience stunning 4K HDR content with the MI Smart TV. PatchWall AI provides a rich content experience.",
+      "features": [
+        "55-inch 4K HDR Display",
+        "PatchWall AI",
+        "Dolby+ DTS-HD Audio",
+        "Multiple Ports"
+      ],
+      "specifications": {
+        "ScreenSize": "55 inches",
+        "Resolution": "4K UHD (3840x2160)",
+        "SmartFeatures": "Android TV, Google Assistant",
+        "Sound": "20W Speakers"
+      },
+      "dimensions": {
+        "width": 123,
+        "height": 71,
+        "depth": 7,
+        "unit": "cm"
+      },
+      "weight": {
+        "value": 12.5,
+        "unit": "kg"
+      },
+      "colors": ["Black"],
+      "availability": {
+        "inStock": true,
+        "quantity": 30,
+        "warehouse": "ELE-WH-01"
+      },
+      "rating": {
+        "average": 4.8,
+        "count": 1200,
+        "distribution": {
+          "5": 1000,
+          "4": 150,
+          "3": 40,
+          "2": 10,
+          "1": 0
+        }
+      },
+      "assets": {
+        "images": [
+          "/assets/images/mi_tv_default.png"
+        ],
+        "primaryImage": "/assets/images/mi_tv_default.png",
+        "model3D": "/assets/models/MI SMART TV.glb",
+        "modelColor": "#333333",
+        "modelScale": 1.0
+      },
+      "seo": {
+        "title": "MI Smart TV 4K 55-inch - Android TV",
+        "description": "Get the MI Smart TV 4K 55-inch for an immersive viewing experience with smart features.",
+        "keywords": ["mi tv", "smart tv", "4k tv", "xiaomi", "android tv"]
+      }
+    },
+    "ELE003": {
+      "id": "ELE003",
+      "sku": "logi-k380-bt",
+      "name": "Logitech K380 Wireless Keyboard",
+      "brand": "Logitech",
+      "category": "Electronics",
+      "subcategory": "Computer Accessories",
+      "price": {
+        "current": 39.99,
+        "original": 49.99,
+        "currency": "USD",
+        "discount": 20
+      },
+      "description": "Multi-device Bluetooth keyboard for computers, tablets, and phones. Compact and comfortable.",
+      "features": [
+        "Multi-device pairing (up to 3 devices)",
+        "Easy-Switch buttons",
+        "2-year battery life",
+        "Compact design"
+      ],
+      "specifications": {
+        "Connectivity": "Bluetooth",
+        "Compatibility": "Windows, Mac, Chrome OS, Android, iOS",
+        "Battery": "2xAAA"
+      },
+      "dimensions": {
+        "width": 27.9,
+        "height": 12.4,
+        "depth": 1.6,
+        "unit": "cm"
+      },
+      "weight": {
+        "value": 0.423,
+        "unit": "kg"
+      },
+      "colors": ["Dark Grey", "Rose", "Off-White"],
+      "availability": {
+        "inStock": true,
+        "quantity": 75,
+        "warehouse": "ELE-WH-02"
+      },
+      "rating": {
+        "average": 4.7,
+        "count": 5500,
+        "distribution": {
+          "5": 4500,
+          "4": 800,
+          "3": 150,
+          "2": 30,
+          "1": 20
+        }
+      },
+      "assets": {
+        "images": [
+          "/assets/images/logi_k380_default.png"
+        ],
+        "primaryImage": "/assets/images/logi_k380_default.png",
+        "model3D": "/assets/models/Logitech Keyboard.glb",
+        "modelColor": "#505050",
+        "modelScale": 1.0
+      },
+      "seo": {
+        "title": "Logitech K380 Multi-Device Bluetooth Keyboard",
+        "description": "Type on anything with the Logitech K380 wireless keyboard. Connects to all Bluetooth wireless devices with external keyboard support.",
+        "keywords": ["logitech", "keyboard", "wireless keyboard", "bluetooth keyboard", "k380"]
+      }
+    },
+    "ELE004": {
+      "id": "ELE004",
+      "sku": "gen-elec-001",
+      "name": "Generic Electronic Device",
+      "brand": "GenericBrand",
+      "category": "Electronics",
+      "subcategory": "Miscellaneous",
+      "price": {
+        "current": 99.99,
+        "original": 129.99,
+        "currency": "USD",
+        "discount": 23
+      },
+      "description": "A versatile generic electronic device with multiple functionalities. Suitable for various applications.",
+      "features": ["Multi-functional", "Portable design", "User-friendly interface"],
+      "specifications": {
+        "PowerSource": "Battery/AC",
+        "Connectivity": "USB, Bluetooth"
+      },
+      "dimensions": {
+        "width": 15,
+        "height": 10,
+        "depth": 5,
+        "unit": "cm"
+      },
+      "weight": {
+        "value": 0.5,
+        "unit": "kg"
+      },
+      "colors": ["Black", "White"],
+      "availability": {
+        "inStock": true,
+        "quantity": 50,
+        "warehouse": "ELE-WH-03"
+      },
+      "rating": {
+        "average": 4.2,
+        "count": 80,
+        "distribution": {
+          "5": 50,
+          "4": 20,
+          "3": 5,
+          "2": 3,
+          "1": 2
+        }
+      },
+      "assets": {
+        "images": [
+          "/assets/images/generic_electronic_default.png"
+        ],
+        "primaryImage": "/assets/images/generic_electronic_default.png",
+        "model3D": "/assets/models/electronics.glb",
+        "modelColor": "#777777",
+        "modelScale": 1.0
+      },
+      "seo": {
+        "title": "Generic Electronic Device - Multi-Purpose Gadget",
+        "description": "Discover the Generic Electronic Device, a reliable and affordable gadget for your everyday needs.",
+        "keywords": ["electronic device", "gadget", "generic electronics"]
+      }
+    },
+    "FUR002": {
+      "id": "FUR002",
+      "sku": "chair-accent-modern-001",
+      "name": "Modern Accent Chair",
+      "brand": "ModernLiving",
+      "category": "Furniture",
+      "subcategory": "Chairs",
+      "price": {
+        "current": 149.99,
+        "original": 199.99,
+        "currency": "USD",
+        "discount": 25
+      },
+      "description": "Stylish and comfortable modern accent chair. Perfect for living rooms, bedrooms, or offices.",
+      "features": [
+        "Ergonomic design",
+        "Durable fabric",
+        "Solid wood legs",
+        "Variety of colors"
+      ],
+      "specifications": {
+        "Material": "Fabric, Wood",
+        "Style": "Modern Accent",
+        "RecommendedUse": "Indoor"
+      },
+      "dimensions": {
+        "width": 60,
+        "height": 75,
+        "depth": 65,
+        "unit": "cm"
+      },
+      "weight": {
+        "value": 12,
+        "unit": "kg"
+      },
+      "colors": ["Teal", "Mustard Yellow", "Charcoal Grey"],
+      "availability": {
+        "inStock": true,
+        "quantity": 25,
+        "warehouse": "FUR-WH-02"
+      },
+      "rating": {
+        "average": 4.5,
+        "count": 210,
+        "distribution": {
+          "5": 150,
+          "4": 45,
+          "3": 10,
+          "2": 3,
+          "1": 2
+        }
+      },
+      "assets": {
+        "images": [
+          "/assets/images/modern_chair_default.png"
+        ],
+        "primaryImage": "/assets/images/modern_chair_default.png",
+        "model3D": "/assets/models/Modern Chair of mine1.glb",
+        "modelColor": "#808080",
+        "modelScale": 1.0
+      },
+      "seo": {
+        "title": "Modern Accent Chair - Stylish & Comfortable Seating",
+        "description": "Add a touch of modern elegance to your space with this accent chair. Available in multiple colors.",
+        "keywords": ["chair", "accent chair", "furniture", "modern chair", "living room chair"]
+      }
+    }
+  }
+}

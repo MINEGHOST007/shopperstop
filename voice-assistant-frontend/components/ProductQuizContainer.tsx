@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRoomContext, useVoiceAssistant } from "@livekit/components-react";
 import ProductSelectionQuiz, { ProductQuizItem } from "./ProductSelectionQuiz";
 import { Gift, Sparkles } from "lucide-react";
+import Image from "next/image";
 
 export default function ProductQuizContainer() {
   const [products, setProducts] = useState<ProductQuizItem[]>([]);
@@ -19,12 +20,17 @@ export default function ProductQuizContainer() {
   useEffect(() => {
     if (!room) return;
 
+    // Type guard for RPC data
+    const isValidRPCData = (data: unknown): data is { payload: unknown } => {
+      return typeof data === 'object' && data !== null && 'payload' in data;
+    };
+
     // Register RPC method to receive product quizzes
-    const handleShowProductQuiz = async (data: any): Promise<string> => {
+    const handleShowProductQuiz = async (data: unknown): Promise<string> => {
       try {
         console.log("Received product quiz RPC data:", data);
         
-        if (!data || data.payload === undefined) {
+        if (!isValidRPCData(data) || data.payload === undefined) {
           console.error("Invalid RPC data received:", data);
           return "Error: Invalid RPC data format";
         }
@@ -126,7 +132,7 @@ export default function ProductQuizContainer() {
           </h3>
           <div className="bg-green-100 border-2 border-green-300 rounded-lg p-4 mb-4">
             <p className="text-lg font-bold text-green-800">
-              You've earned a {discountPercentage}% discount!
+              You&apos;ve earned a {discountPercentage}% discount!
             </p>
             <p className="text-sm text-green-700 mt-1">
               You liked {likedProducts.length} products
@@ -154,11 +160,15 @@ export default function ProductQuizContainer() {
             {likedProducts.slice(0, 3).map((product) => (
               <div key={product.id} className="bg-white rounded-lg p-2 flex items-center text-left">
                 {product.image && (
-                  <img 
-                    src={product.image} 
-                    alt={product.title}
-                    className="w-10 h-10 rounded object-cover mr-3"
-                  />
+                  <div className="relative w-10 h-10 mr-3">
+                    <Image 
+                      src={product.image} 
+                      alt={product.title}
+                      fill
+                      className="rounded object-cover"
+                      sizes="40px"
+                    />
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{product.title}</p>

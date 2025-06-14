@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRoomContext, useVoiceAssistant } from "@livekit/components-react";
-import { ShoppingBag, Star, Tag, Package, Zap } from "lucide-react";
+import { useRoomContext } from "@livekit/components-react";
+import { ShoppingBag, Star, Tag, Package } from "lucide-react";
+import Image from "next/image";
 
 interface ProductGridItem {
   id: number;
@@ -29,15 +30,19 @@ export default function ProductVisualizationPanel() {
   const [isInitialRender, setIsInitialRender] = useState(true);
   const [lastUpdateTime, setLastUpdateTime] = useState(0);
   const room = useRoomContext();
-  const { agent } = useVoiceAssistant();
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Type guard for RPC data
+  const isValidRPCData = (data: unknown): data is { payload: unknown } => {
+    return typeof data === 'object' && data !== null && 'payload' in data;
+  };
+
   // Register RPC method to receive product grids
-  const handleShowProductGrid = useCallback(async (data: any): Promise<string> => {
+  const handleShowProductGrid = useCallback(async (data: unknown): Promise<string> => {
     try {
       console.log("Received product grid RPC data:", data);
       
-      if (!data || data.payload === undefined) {
+      if (!isValidRPCData(data) || data.payload === undefined) {
         console.error("Invalid RPC data received:", data);
         return "Error: Invalid RPC data format";
       }
@@ -109,15 +114,17 @@ export default function ProductVisualizationPanel() {
       initial={isInitialRender ? { opacity: 0, y: 20 } : { opacity: 1, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02, y: -5 }}
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group"
+      className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 overflow-hidden group"
     >
       {/* Product Image */}
-      <div className="relative h-48 bg-gray-100">
+      <div className="relative h-48 bg-gray-50">
         {product.image ? (
-          <img 
+          <Image 
             src={product.image} 
             alt={product.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -125,18 +132,18 @@ export default function ProductVisualizationPanel() {
           </div>
         )}
         
-        {/* Discount Badge */}
+        {/* Rollback Badge */}
         {product.discount_percentage > 0 && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold">
-            -{product.discount_percentage.toFixed(0)}%
+          <div className="absolute top-2 left-2 bg-yellow-400 text-blue-900 px-2 py-1 rounded-full text-xs font-bold">
+            Rollback
           </div>
         )}
         
         {/* Stock Badge */}
-        <div className={`absolute top-2 right-2 px-2 py-1 rounded-md text-xs font-medium ${
+        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${
           product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
-          {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+          {product.stock > 0 ? `${product.stock} left` : 'Out of stock'}
         </div>
       </div>
       
@@ -165,7 +172,7 @@ export default function ProductVisualizationPanel() {
         {/* Price */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-lg font-bold text-gray-900">
+            <span className="text-lg font-bold text-blue-900">
               ${product.price.toFixed(2)}
             </span>
             {product.original_price && (
@@ -175,9 +182,10 @@ export default function ProductVisualizationPanel() {
             )}
           </div>
           {product.discount_percentage > 0 && (
-            <div className="flex items-center text-green-600">
-              <Zap className="w-4 h-4 mr-1" />
-              <span className="text-sm font-medium">Deal!</span>
+            <div className="flex items-center text-yellow-600">
+              <span className="text-sm font-bold bg-yellow-100 px-2 py-1 rounded-full">
+                Save ${((product.original_price || product.price) - product.price).toFixed(2)}
+              </span>
             </div>
           )}
         </div>
@@ -188,7 +196,7 @@ export default function ProductVisualizationPanel() {
             {product.tags.slice(0, 3).map((tag, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800"
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-800"
               >
                 <Tag className="w-3 h-3 mr-1" />
                 {tag}
@@ -203,7 +211,7 @@ export default function ProductVisualizationPanel() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+      <div className="bg-blue-600 text-white p-4" style={{ backgroundColor: '#0071ce' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <ShoppingBag className="w-6 h-6 mr-2" />
@@ -212,7 +220,8 @@ export default function ProductVisualizationPanel() {
           {productGrid && (
             <button
               onClick={() => setIsVisible(false)}
-              className="text-white hover:text-gray-200 text-xl"
+              className="text-white hover:text-yellow-300 text-xl bg-yellow-500 hover:bg-yellow-600 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+              style={{ backgroundColor: '#ffc220' }}
             >
               ×
             </button>
@@ -265,16 +274,16 @@ export default function ProductVisualizationPanel() {
                 <h3 className="text-xl font-semibold mb-2">Ready to Shop!</h3>
                 <p className="text-gray-400 max-w-md">
                   Start chatting with Sarah to discover amazing products. 
-                  She'll show you personalized recommendations right here!
+                  She&apos;ll show you personalized recommendations right here!
                 </p>
                 <div className="mt-6 grid grid-cols-2 gap-4 max-w-sm mx-auto text-sm">
                   <div className="bg-blue-50 p-3 rounded-lg">
                     <span className="font-medium text-blue-800">Try saying:</span>
-                    <p className="text-blue-600 mt-1">"Show me laptops under $1000"</p>
+                    <p className="text-blue-600 mt-1">&quot;Show me laptops under $1000&quot;</p>
                   </div>
                   <div className="bg-purple-50 p-3 rounded-lg">
                     <span className="font-medium text-purple-800">Or ask for:</span>
-                    <p className="text-purple-600 mt-1">"Beauty products with discounts"</p>
+                    <p className="text-purple-600 mt-1">&quot;Beauty products with discounts&quot;</p>
                   </div>
                 </div>
               </div>

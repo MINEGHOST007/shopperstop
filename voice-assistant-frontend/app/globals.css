@@ -5,6 +5,9 @@
 :root {
   --lk-va-bar-width: 72px;
   --lk-control-bar-height: unset;
+  --walmart-blue: #0071ce;
+  --walmart-yellow: #ffc220;
+  --walmart-dark-blue: #004c91;
 }
 
 .agent-visualizer > .lk-audio-bar {
@@ -12,11 +15,28 @@
 }
 
 .lk-agent-control-bar {
-  @apply border-t-0 p-0 h-min mr-4;
+  @apply border-t-0 p-0 h-min mr-4 bg-white rounded-lg shadow-sm;
 }
 
 .lk-disconnect-button {
   @apply h-[36px] hover:bg-[#dc2626] hover:text-[white] bg-[#991b1b] border-[#dc2626];
+}
+
+/* Walmart-style UI enhancements */
+.walmart-button {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-all duration-200 shadow-sm hover:shadow-md;
+}
+
+.walmart-card {
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200;
+}
+
+.walmart-header {
+  @apply bg-blue-600 text-white font-semibold;
+}
+
+.walmart-accent {
+  @apply bg-yellow-400 text-blue-600;
 }
 
 /* Shopping-themed utility classes */
