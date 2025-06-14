@@ -34,13 +34,22 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const response = await fetch('/combined-products.json');
-        const data = await response.json();
-        setProducts(data.products || []);
+        // Try to load from the main products.json first (has more products)
+        let response = await fetch('/products.json');
+        let data = await response.json();
+        
+        if (data.products && data.products.length > 0) {
+          setProducts(data.products);
+        } else {
+          // Fallback to combined-products.json
+          response = await fetch('/combined-products.json');
+          data = await response.json();
+          setProducts(data.products || []);
+        }
         setLoading(false);
       } catch (error) {
         console.error('Failed to load products:', error);
-        // Fallback to empty array if file not found
+        // Final fallback to empty array
         setProducts([]);
         setLoading(false);
       }
@@ -100,7 +109,7 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
         className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer border border-gray-200"
       >
         {/* Product Image */}
-        <div className="relative h-48 bg-gray-50">
+        <div className="relative h-48 bg-gray-50 overflow-hidden">
           <Image 
             src={product.thumbnail} 
             alt={product.title}
@@ -114,16 +123,25 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
           
           {/* Rollback/Discount Badge */}
           {product.discountPercentage > 0 && (
-            <div className="absolute top-2 left-2 bg-walmart-blue text-white px-2 py-1 rounded text-xs font-bold">
-              Rollback
+            <div className="absolute top-2 left-2">
+              <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                -{product.discountPercentage}% OFF
+              </div>
             </div>
           )}
           
           {/* Stock Status */}
-          <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium ${
-            product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium shadow-sm ${
+            product.stock > 0 ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
           }`}>
-            {product.stock > 0 ? 'In stock' : 'Out of stock'}
+            {product.stock > 0 ? `${product.stock} left` : 'Out of stock'}
+          </div>
+
+          {/* Quick View Overlay */}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+            <button className="bg-white text-walmart-blue px-3 py-1 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+              Quick View
+            </button>
           </div>
         </div>
         
@@ -189,13 +207,15 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
           </div>
           
           {/* Add to Cart Button */}
-          <button 
-            className="w-full bg-walmart-blue hover:bg-walmart-blue-dark text-white py-2.5 px-4 rounded-full font-medium transition-colors flex items-center justify-center text-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full bg-walmart-blue hover:bg-walmart-blue-dark text-white py-2.5 px-4 rounded-full font-medium transition-all duration-200 flex items-center justify-center text-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
             disabled={product.stock <= 0}
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
             {product.stock > 0 ? 'Add to cart' : 'Out of stock'}
-          </button>
+          </motion.button>
         </div>
       </motion.div>
     );
@@ -206,12 +226,17 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
       <div className="min-h-screen bg-walmart-gray flex items-center justify-center font-walmart">
         <div className="flex flex-col items-center">
           <div className="w-16 h-16 bg-walmart-blue rounded-full flex items-center justify-center mb-4 animate-pulse">
-            <div className="w-8 h-8 bg-walmart-yellow rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-walmart-yellow rounded-full flex items-center justify-center animate-bounce">
               <span className="text-walmart-blue font-bold text-lg">✱</span>
             </div>
           </div>
-          <p className="text-walmart-dark-gray font-medium">Loading Walmart...</p>
+          <p className="text-walmart-dark-gray font-medium">Loading your personalized shopping experience...</p>
           <p className="text-gray-500 text-sm mt-1">Finding the best deals for you</p>
+          <div className="flex space-x-1 mt-4">
+            <div className="w-2 h-2 bg-walmart-blue rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 bg-walmart-blue rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+            <div className="w-2 h-2 bg-walmart-blue rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+          </div>
         </div>
       </div>
     );
@@ -269,21 +294,24 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
       </header>
 
       {/* Promotional Banner */}
-      <div className="bg-walmart-yellow py-2">
+                <div className="bg-walmart-yellow py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center text-walmart-blue font-medium text-sm">
             <Zap className="w-4 h-4 mr-2" />
-            Free shipping, free pickup. Shop now with our AI shopping assistant!
+            Free shipping, free pickup. Shop now with our AI shopping assistant! 
+            <span className="ml-4 bg-walmart-blue text-white px-2 py-1 rounded-full text-xs">
+              {filteredProducts.length}+ products available
+            </span>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="bg-walmart-gray min-h-screen">
+              <div className="bg-walmart-gray min-h-screen">
         {/* Hero/Promotion Section */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="md:col-span-2 bg-gradient-to-r from-walmart-blue to-walmart-blue-dark rounded-lg p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div>
@@ -307,6 +335,93 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
                   <h3 className="text-lg font-bold text-walmart-blue mb-2">Free Shipping</h3>
                   <p className="text-walmart-blue text-sm">On orders $35+ or pickup</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Featured Products Section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-walmart-dark-gray">Featured Products</h2>
+                <span className="text-sm text-gray-500">Trending now</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {products.slice(0, 4).map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+
+            {/* Best Deals Section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-walmart-dark-gray">Best Deals</h2>
+                <span className="text-walmart-blue text-sm font-medium">Save up to 33%</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {products
+                  .filter(p => p.discountPercentage >= 20)
+                  .slice(0, 5)
+                  .map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+              </div>
+            </div>
+
+            {/* Quick Stats Banner */}
+            <div className="bg-gradient-to-r from-walmart-blue-light to-walmart-blue rounded-lg p-6 mb-8 text-white">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{products.length.toLocaleString()}+</div>
+                  <div className="text-sm text-blue-100">Products Available</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{categories.length}</div>
+                  <div className="text-sm text-blue-100">Categories</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{products.filter(p => p.discountPercentage > 0).length}+</div>
+                  <div className="text-sm text-blue-100">Special Deals</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">24/7</div>
+                  <div className="text-sm text-blue-100">AI Assistant</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Shop by Category Section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-walmart-dark-gray">Shop by Category</h2>
+                <button className="text-walmart-blue text-sm font-medium hover:text-walmart-blue-dark">View all</button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {categories.map((category) => {
+                  const categoryCount = products.filter(p => p.category === category).length;
+                  const categoryIcons: { [key: string]: any } = {
+                    electronics: "📱",
+                    furniture: "🪑", 
+                    home: "🏠",
+                    kitchen: "🍳",
+                    fitness: "💪",
+                    default: "🛍️"
+                  };
+                  const icon = categoryIcons[category] || categoryIcons.default;
+                  
+                  return (
+                    <motion.button
+                      key={category}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedCategory(category)}
+                      className="bg-white rounded-lg p-4 text-center border border-gray-200 hover:border-walmart-blue hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="text-3xl mb-2">{icon}</div>
+                      <div className="text-sm font-medium text-walmart-dark-gray capitalize">{category}</div>
+                      <div className="text-xs text-gray-500">{categoryCount} items</div>
+                    </motion.button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -460,6 +575,60 @@ export default function EcommerceHomepage({ onStartConversation }: EcommerceHome
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-walmart-blue text-white py-12 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-walmart-yellow rounded-full mr-3 flex items-center justify-center">
+                  <span className="text-walmart-blue font-bold text-lg">✱</span>
+                </div>
+                <h3 className="text-xl font-bold">AI Shopping</h3>
+              </div>
+              <p className="text-blue-100 text-sm">
+                Experience the future of shopping with our AI-powered voice assistant Sarah. 
+                Find products, get recommendations, and discover great deals with natural conversation.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <ul className="space-y-2 text-sm text-blue-100">
+                <li><a href="#" className="hover:text-white transition-colors">All Departments</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Best Sellers</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">New Arrivals</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Deal of the Day</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Customer Service</h4>
+              <ul className="space-y-2 text-sm text-blue-100">
+                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Track Your Order</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Returns & Exchanges</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">AI Features</h4>
+              <ul className="space-y-2 text-sm text-blue-100">
+                <li>🎯 Personalized Recommendations</li>
+                <li>🛍️ Voice Shopping Assistant</li>
+                <li>🎁 Product Discovery Quiz</li>
+                <li>💰 Smart Deal Finder</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-blue-300 mt-8 pt-8 text-center text-sm text-blue-100">
+            <p>&copy; 2024 AI Shopping Assistant powered by Tavus. Experience shopping like never before.</p>
+          </div>
+        </div>
+      </footer>
 
       {/* Floating Voice Assistant Button */}
       <motion.button
