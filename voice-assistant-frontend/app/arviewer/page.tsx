@@ -1,18 +1,17 @@
 /**
  * Main App Component - Walmart AR Product Viewer
  * 
- * This is the main application component that orchestrates the entire
- * Walmart AR product viewing experience. It manages:
- * - Product catalog loading and display
- * - Product selection and viewing state
- * - AR viewer interactions
- * - Walmart-themed UI and branding
+ * Redesigned to match the voice assistant layout with:
+ * - Left panel: Static AR assistant with product search and selection
+ * - Right panel: AR viewer and product details
+ * - Clean, modern UI consistent with voice assistant
  */
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Filter, Sparkles } from 'lucide-react';
+import { ShoppingCart, Search, ArrowLeft, Sparkles, Eye, Package, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard, { ProductCardData } from '../../components/ProductCard';
 import { ProductViewer } from '../../components/ProductViewer';
 import { ProductDetails } from '../../components/ProductDetails';
@@ -97,10 +96,10 @@ function App() {
   // State management
   const [products, setProducts] = useState<UnifiedProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<UnifiedProduct | null>(null);
-  const [showDetails, setShowDetails] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [cartItems, setCartItems] = useState<string[]>([]);
+  const [showDetails, setShowDetails] = useState(true);
 
   // Load products on component mount
   useEffect(() => {
@@ -155,231 +154,277 @@ function App() {
     const productId = selectedProduct.id.toString();
     if (cartItems.includes(productId)) {
       setCartItems(cartItems.filter(id => id !== productId));
-      console.log('Removed from cart:', selectedProduct.title || selectedProduct.name);
     } else {
       setCartItems([...cartItems, productId]);
-      console.log('Added to cart:', selectedProduct.title || selectedProduct.name);
     }
   };
 
-  // Calculate total cart value
-  const cartTotal = React.useMemo(() => {
-    return cartItems.reduce((total, itemId) => {
-      const product = products.find(p => p.id.toString() === itemId);
-      return total + (product?.price || 0);
-    }, 0);
-  }, [cartItems, products]);
+  // Handle back to main page
+  const handleBackToHome = () => {
+    window.location.href = '/';
+  };
 
-  if (!selectedProduct) {
+  if (!selectedProduct && products.length === 0) {
     return (
-      <div className="min-h-screen bg-walmart-blue flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="w-16 h-16 bg-walmart-yellow rounded-full flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="text-walmart-blue" size={32} />
+      <div className="min-h-screen bg-walmart-gray flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-walmart-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <div className="w-12 h-12 bg-walmart-yellow rounded-full flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-walmart-blue" />
+            </div>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Loading Walmart AR Viewer...</h1>
-          <p className="text-blue-200">Preparing your shopping experience</p>
+          <h2 className="text-2xl font-bold text-walmart-dark-gray mb-3">AR Product Viewer</h2>
+          <p className="text-gray-600 mb-6">Loading AR-enabled products...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className=" bg-walmart-gray flex font-walmart">
-      {/* Enhanced Sidebar with better alignment */}
-      <div className="w-96 bg-white shadow-xl flex flex-col border-r border-gray-200 relative">
-        {/* Header with improved spacing and alignment */}
-        <div className="bg-walmart-blue text-white p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-walmart-yellow rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-walmart-blue font-bold text-2xl">✱</span>
-            </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold leading-tight">Walmart</h1>
-              <p className="text-blue-200 text-sm font-medium mt-1">AR Product Viewer</p>
-            </div>
-          </div>
-
-          {/* Enhanced Search Bar with better alignment */}
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={20} />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-xl border-0 text-gray-900 placeholder-gray-500 focus:ring-3 focus:ring-walmart-yellow/50 focus:outline-none text-base shadow-inner"
-            />
-          </div>
-        </div>
-
-        {/* Stats and Cart with improved layout */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-walmart-gray to-gray-50">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl p-5 text-center shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200">
-              <div className="text-3xl font-bold text-walmart-blue mb-2">{filteredProducts.length}</div>
-              <div className="text-walmart-dark-gray text-xs uppercase font-semibold tracking-wider">Products</div>
-            </div>
-            <div className="bg-white rounded-xl p-5 text-center shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <ShoppingCart className="text-walmart-yellow" size={18} />
-                <span className="text-3xl font-bold text-gray-900">{cartItems.length}</span>
-              </div>
-              <div className="text-walmart-dark-gray text-xs uppercase font-semibold tracking-wider">
-                Cart (${cartTotal.toFixed(2)})
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Filter with better spacing */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3 mb-4">
-            <Filter className="text-walmart-dark-gray" size={20} />
-            <h3 className="font-bold text-walmart-dark-gray text-lg">Categories</h3>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {categories.map((category) => (
+    <main data-lk-theme="default" className="min-h-screen bg-walmart-gray font-walmart">
+      <div className="h-screen w-full flex">
+        {/* Left Panel - AR Assistant & Product Selection */}
+        <div className="w-1/3 min-w-[400px] flex flex-col border-r border-gray-200 bg-white shadow-lg">
+          {/* Header with Back Button - Walmart Style */}
+          <div className="bg-walmart-blue p-4 border-b border-walmart-blue-dark">
+            <div className="flex items-center justify-between">
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  selectedCategory === category
-                    ? 'bg-walmart-blue text-white hover:bg-walmart-blue-dark shadow-md ring-2 ring-walmart-blue/20'
-                    : 'bg-gray-200 text-walmart-dark-gray hover:bg-gray-300 hover:shadow-sm'
-                }`}
+                onClick={handleBackToHome}
+                className="flex items-center text-white hover:text-walmart-yellow transition-colors font-medium"
               >
-                {category}
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Shop
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Product Grid with improved spacing and alignment */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-walmart-dark-gray flex items-center gap-2">
-              <span>Products</span>
-              <span className="bg-walmart-blue text-white text-sm px-2 py-1 rounded-full">
-                {filteredProducts.length}
-              </span>
-            </h2>
-            <button 
-              onClick={() => setShowDetails(!showDetails)}
-              className={`text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200 ${
-                showDetails 
-                  ? 'bg-walmart-blue text-white hover:bg-walmart-blue-dark' 
-                  : 'text-walmart-blue hover:bg-blue-50 border border-walmart-blue'
-              }`}
-            >
-              {showDetails ? 'Hide Details' : 'Show Details'}
-            </button>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-walmart-yellow rounded-full mr-2 flex items-center justify-center">
+                  <Eye className="text-walmart-blue w-4 h-4" />
+                </div>
+                <h2 className="text-white font-semibold">AR Assistant</h2>
+              </div>
+            </div>
           </div>
           
-          <div className="space-y-4">
-            {filteredProducts.map((product) => {
-              // Use the convertToProductCard function
-              const cardData = convertToProductCard(product);
-              
-              return (
-                <ProductCard
-                  key={product.id}
-                  card={cardData}
-                  onAction={(id, action) => {
-                    if (action === 'select') {
-                      handleProductSelect(product);
-                    }
-                  }}
-                />
-              );
-            })}
+          {/* Assistant Status Bar */}
+          <div className="bg-walmart-yellow/10 border-b border-walmart-yellow/20 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-walmart-blue text-sm font-medium">AR Viewer Ready</span>
+              </div>
+              <div className="text-xs text-walmart-dark-gray">
+                {filteredProducts.length} Products Available
+              </div>
+            </div>
           </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-16">
-              <div className="text-gray-400 mb-4">
-                <Search size={64} className="mx-auto" />
-              </div>
-              <h3 className="text-xl font-bold text-walmart-dark-gray mb-3">No products found</h3>
-              <p className="text-gray-600 mb-6">Try adjusting your search or filters.</p>
-              <button 
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('All');
-                }}
-                className="px-6 py-3 bg-walmart-blue text-white rounded-lg hover:bg-walmart-blue-dark transition-colors font-semibold"
-              >
-                Clear Filters
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Enhanced Main Content Area */}
-      <div className="flex-1 relative bg-gradient-to-br from-white to-gray-50 overflow-hidden">
-        {/* Top Navigation Bar */}
-        <div className="absolute top-0 left-0 right-0 z-30 bg-white/90 backdrop-blur-sm border-b border-gray-200/50">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-bold text-walmart-blue">
-                {selectedProduct?.title || selectedProduct?.name || 'Product Viewer'}
-              </h2>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span>AR Ready</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-lg font-bold text-walmart-blue">
-                  ${selectedProduct?.price.toFixed(2) || '0.00'}
+          {/* AR Assistant Avatar & Info */}
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-br from-walmart-gray/30 to-white">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-walmart-blue to-walmart-blue-dark rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                <div className="w-10 h-10 bg-walmart-yellow rounded-full flex items-center justify-center">
+                  <Eye className="text-walmart-blue w-5 h-5" />
                 </div>
-                {selectedProduct?.discountPercentage && selectedProduct.discountPercentage > 0 && (
-                  <div className="text-sm text-gray-500 line-through">
-                    ${(selectedProduct.price / (1 - selectedProduct.discountPercentage / 100)).toFixed(2)}
+              </div>
+              <h3 className="font-bold text-walmart-dark-gray text-lg mb-1">AR Shopping Assistant</h3>
+              <p className="text-gray-600 text-sm mb-4">Browse products in augmented reality</p>
+              
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <div className="flex items-center justify-center mb-1">
+                    <Package className="w-4 h-4 text-walmart-blue mr-1" />
+                    <span className="text-lg font-bold text-walmart-blue">{products.length}</span>
+                  </div>
+                  <div className="text-xs text-gray-600">AR Products</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <div className="flex items-center justify-center mb-1">
+                    <ShoppingCart className="w-4 h-4 text-walmart-yellow mr-1" />
+                    <span className="text-lg font-bold text-walmart-blue">{cartItems.length}</span>
+                  </div>
+                  <div className="text-xs text-gray-600">In Cart</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search AR products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-walmart-blue/20 focus:border-walmart-blue text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Category Filter */}
+          <div className="p-4 border-b border-gray-200">
+            <h4 className="font-semibold text-walmart-dark-gray mb-3 text-sm">Categories</h4>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    selectedCategory === category
+                      ? 'bg-walmart-blue text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Product List */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-walmart-dark-gray text-sm">
+                Products ({filteredProducts.length})
+              </h4>
+              {selectedProduct && (
+                <div className="text-xs text-green-600 font-medium">
+                  ● {selectedProduct.title || selectedProduct.name}
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              {filteredProducts.map((product) => {
+                const isSelected = selectedProduct?.id === product.id;
+                return (
+                  <motion.div
+                    key={product.id}
+                    layout
+                    className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'border-walmart-blue bg-walmart-blue/5 shadow-md' 
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => handleProductSelect(product)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={product.thumbnail}
+                        alt={product.title || product.name}
+                        className="w-12 h-12 object-cover rounded-lg bg-gray-100"
+                        onError={(e) => {
+                          e.currentTarget.src = '/assets/images/iphoneX.png';
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-medium text-sm text-walmart-dark-gray truncate">
+                          {product.title || product.name}
+                        </h5>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                          <span className="text-xs text-gray-600">{product.rating}</span>
+                        </div>
+                        <div className="text-sm font-bold text-walmart-blue mt-1">
+                          ${product.price.toFixed(2)}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <div className="w-2 h-2 bg-walmart-blue rounded-full"></div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {filteredProducts.length === 0 && (
+              <div className="text-center py-8">
+                <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No products found</p>
+                <button 
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('All');
+                  }}
+                  className="text-walmart-blue text-sm mt-2 hover:underline"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Right Panel - AR Viewer */}
+        <div className="flex-1 bg-white">
+          <div className="h-full flex flex-col">
+            {/* Right Panel Header */}
+            <div className="bg-white border-b border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-walmart-dark-gray">
+                    {selectedProduct ? (selectedProduct.title || selectedProduct.name) : 'AR Product Viewer'}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedProduct ? 'View this product in augmented reality' : 'Select a product to view in AR'}
+                  </p>
+                </div>
+                {selectedProduct && (
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-walmart-blue">
+                      ${selectedProduct.price.toFixed(2)}
+                    </div>
+                    {selectedProduct.discountPercentage && selectedProduct.discountPercentage > 0 && (
+                      <div className="text-sm text-gray-500 line-through">
+                        ${(selectedProduct.price / (1 - selectedProduct.discountPercentage / 100)).toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* AR Viewer Container */}
-        <div className="pt-20">
-          <ProductViewer
-            product={convertToViewerProduct(selectedProduct)}
-          />
-        </div>
-        
-        {/* Product Details Panel */}
-        <ProductDetails
-          product={convertToViewerProduct(selectedProduct)}
-          isVisible={showDetails}
-          onToggleCart={handleToggleCart}
-        />
-
-        {/* Enhanced Background Decorations with better positioning */}
-        <div className="absolute top-1/4 right-1/4 w-40 h-40 bg-walmart-blue/8 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-60 h-60 bg-walmart-yellow/8 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-blue-200/10 rounded-full blur-2xl animate-pulse delay-500"></div>
-
-        {/* Floating Brand Badge with better positioning */}
-        <div className="absolute bottom-6 right-6 z-20">
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-200/50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-walmart-yellow rounded-full flex items-center justify-center">
-                <span className="text-walmart-blue font-bold text-sm">✱</span>
-              </div>
-              <div>
-                <div className="font-bold text-walmart-blue text-sm">Walmart AR</div>
-                <div className="text-gray-600 text-xs">Powered by 3D Tech</div>
-              </div>
+            
+            {/* AR Viewer Container */}
+            <div className="flex-1 relative">
+              {selectedProduct ? (
+                <>
+                  <ProductViewer
+                    product={convertToViewerProduct(selectedProduct)}
+                  />
+                  
+                  {/* Product Details Panel */}
+                  <ProductDetails
+                    product={convertToViewerProduct(selectedProduct)}
+                    isVisible={showDetails}
+                    onToggleCart={handleToggleCart}
+                  />
+                  
+                  {/* Toggle Details Button */}
+                  <button
+                    onClick={() => setShowDetails(!showDetails)}
+                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-walmart-blue hover:bg-white transition-all shadow-sm"
+                  >
+                    {showDetails ? 'Hide Details' : 'Show Details'}
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full bg-gray-50">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Eye className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">Select a Product</h3>
+                    <p className="text-gray-500">Choose a product from the left panel to view in AR</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
